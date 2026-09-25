@@ -1,0 +1,44 @@
+{
+  "experiment": "Wearable-only deployment ablation",
+  "generated_at": "2026-09-24T11:37:25.500017+00:00",
+  "model": "random_forest",
+  "cohort": {
+    "patients": 12000,
+    "readings_per_patient": 3,
+    "seed": 42
+  },
+  "scenarios": {
+    "S1_full_observation": {
+      "accuracy": 0.9015277777777778,
+      "macro_f1": 0.821390868056726,
+      "high_recall": 0.889050036258158,
+      "missed_high_rate": 0.005076142131979695,
+      "mean_cost": 0.23833333333333334
+    },
+    "S2_trained_full_served_wearable_only": {
+      "accuracy": 0.8816666666666667,
+      "macro_f1": 0.7782644864068686,
+      "high_recall": 0.7802755620014503,
+      "missed_high_rate": 0.016678752719361856,
+      "mean_cost": 0.4438888888888889
+    },
+    "S3_trained_and_served_wearable_only": {
+      "accuracy": 0.8690277777777777,
+      "macro_f1": 0.7744055627150582,
+      "high_recall": 0.8448150833937635,
+      "missed_high_rate": 0.010877447425670777,
+      "mean_cost": 0.3536111111111111
+    }
+  },
+  "cost_of_silent_mismatch": {
+    "macro_f1_drop": 0.04312638164985738,
+    "high_recall_drop": 0.10877447425670772,
+    "missed_high_rate_increase": 0.011602610587382161
+  },
+  "benefit_of_honest_retraining": {
+    "macro_f1_recovered": -0.003858923691810401,
+    "high_recall_recovered": 0.06453952139231323,
+    "missed_high_rate_reduced": 0.00580130529369108
+  },
+  "interpretation": "S1 is the setting reported in the main Track B results and assumes supplemental-oxygen and AVPU observations are available. S2 is the failure mode of deploying that model against a wearable-only feed. S3 shows how much of the loss is recovered by training for the inputs that will actually be present at inference."
+}

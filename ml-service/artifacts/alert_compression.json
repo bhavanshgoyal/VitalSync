@@ -1,0 +1,38 @@
+{
+  "experiment": "E6 notification event counts",
+  "generated_at": "2026-09-24T11:09:38.956403+00:00",
+  "cohort": {
+    "patients": 200,
+    "readings_per_patient": 24,
+    "total_readings": 4800,
+    "seed": 42,
+    "band_counts": {
+      "LOW": 3538,
+      "HIGH": 824,
+      "MEDIUM": 438
+    }
+  },
+  "policies": {
+    "A_per_parameter_thresholds": {
+      "events": 4306,
+      "events_per_100_readings": 89.708,
+      "definition": "one event per breaching parameter per reading"
+    },
+    "B_aggregate_band": {
+      "events": 1262,
+      "events_per_100_readings": 26.292,
+      "definition": "one event per reading whose band is not LOW"
+    },
+    "C_band_transition": {
+      "events": 419,
+      "events_per_100_readings": 8.729,
+      "definition": "one event per upward band transition per patient"
+    }
+  },
+  "ratios": {
+    "A_over_B": 3.412,
+    "A_over_C": 10.277,
+    "B_over_C": 3.012
+  },
+  "CAVEAT": "These are event counts over a simulated stream. They are NOT a measurement of alert fatigue, clinician workload, diagnostic accuracy, or patient outcome, and must not be reported as such. Policy C emits fewer events by construction; whether that is clinically safe is unknown and untested here -- fewer notifications can mean missed deterioration."
+}

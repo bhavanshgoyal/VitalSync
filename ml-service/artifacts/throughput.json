@@ -1,0 +1,97 @@
+{
+  "experiment": "E4 ingestion throughput",
+  "generated_at": "2026-09-24T11:38:19.024272+00:00",
+  "base_url": "http://localhost:8080",
+  "note": "Measured on a single developer workstation with all services in local Docker containers. Numbers characterise this configuration only and are not production service-level objectives.",
+  "measures": "Synchronous ingestion only. Risk analysis runs asynchronously; the backlog column shows how far analysis trails ingestion, which is the intended behaviour of the decoupled design.",
+  "results": [
+    {
+      "target_rate_rps": 10,
+      "duration_s": 8,
+      "requests_attempted": 80,
+      "requests_accepted": 80,
+      "errors": 0,
+      "error_rate": 0.0,
+      "wall_clock_s": 7.911,
+      "achieved_rps": 10.11,
+      "ingest_latency_ms": {
+        "n": 80,
+        "mean": 15.927478749836155,
+        "p50": 11.656399990897626,
+        "p95": 31.21129999635741,
+        "p99": 33.207800006493926,
+        "max": 33.68980000959709,
+        "min": 9.718000001157634
+      },
+      "assessments_completed_within_drain": 80,
+      "analysis_backlog_after_drain": 0,
+      "drain_seconds": 25
+    },
+    {
+      "target_rate_rps": 50,
+      "duration_s": 8,
+      "requests_attempted": 400,
+      "requests_accepted": 399,
+      "errors": 1,
+      "error_rate": 0.0025,
+      "wall_clock_s": 8.009,
+      "achieved_rps": 49.82,
+      "ingest_latency_ms": {
+        "n": 399,
+        "mean": 12.440739850197653,
+        "p50": 9.41630000306759,
+        "p95": 29.046499999822117,
+        "p99": 32.25360000215005,
+        "max": 36.266200011596084,
+        "min": 7.523099993704818
+      },
+      "assessments_completed_within_drain": 399,
+      "analysis_backlog_after_drain": 0,
+      "drain_seconds": 25
+    },
+    {
+      "target_rate_rps": 100,
+      "duration_s": 8,
+      "requests_attempted": 800,
+      "requests_accepted": 800,
+      "errors": 0,
+      "error_rate": 0.0,
+      "wall_clock_s": 8.002,
+      "achieved_rps": 99.98,
+      "ingest_latency_ms": {
+        "n": 800,
+        "mean": 11.310378624384612,
+        "p50": 8.45850000041537,
+        "p95": 26.964099990436807,
+        "p99": 31.179199999314733,
+        "max": 33.080399996833876,
+        "min": 6.416699994588271
+      },
+      "assessments_completed_within_drain": 800,
+      "analysis_backlog_after_drain": 0,
+      "drain_seconds": 25
+    },
+    {
+      "target_rate_rps": 250,
+      "duration_s": 8,
+      "requests_attempted": 2000,
+      "requests_accepted": 1998,
+      "errors": 2,
+      "error_rate": 0.001,
+      "wall_clock_s": 12.549,
+      "achieved_rps": 159.22,
+      "ingest_latency_ms": {
+        "n": 1998,
+        "mean": 814.3306858859527,
+        "p50": 33.55070001271088,
+        "p95": 4363.909300009254,
+        "p99": 5087.175699998625,
+        "max": 5204.423300005146,
+        "min": 6.406300002709031
+      },
+      "assessments_completed_within_drain": 1998,
+      "analysis_backlog_after_drain": 0,
+      "drain_seconds": 25
+    }
+  ]
+}

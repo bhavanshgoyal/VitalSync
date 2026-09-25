@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: vitalsync-backend
+
+  datasource:
+    url: ${VITALSYNC_DB_URL:jdbc:postgresql://localhost:5432/vitalsync}
+    username: ${VITALSYNC_DB_USER:vitalsync}
+    password: ${VITALSYNC_DB_PASSWORD:vitalsync}
+    hikari:
+      maximum-pool-size: ${VITALSYNC_DB_POOL:10}
+      connection-timeout: 5000
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${VITALSYNC_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    defaults:
+      enabled: true
+
+vitalsync:
+  security:
+    # Demo default. Must be at least 32 bytes for HS256; override in any
+    # deployment that is reachable by anyone other than the developer.
+    jwt-secret: ${VITALSYNC_JWT_SECRET:change-me-vitalsync-demo-secret-key-32b}
+    jwt-ttl-seconds: ${VITALSYNC_JWT_TTL:3600}
+    jwt-issuer: vitalsync
+    demo-user: ${VITALSYNC_DEMO_USER:clinician}
+    demo-password: ${VITALSYNC_DEMO_PASSWORD:vitalsync-demo}
+
+  ml:
+    base-url: ${VITALSYNC_ML_URL:http://localhost:8000}
+    connect-timeout-ms: ${VITALSYNC_ML_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${VITALSYNC_ML_READ_TIMEOUT_MS:5000}
+
+  async:
+    core-pool-size: ${VITALSYNC_ASYNC_CORE:4}
+    max-pool-size: ${VITALSYNC_ASYNC_MAX:8}
+    queue-capacity: ${VITALSYNC_ASYNC_QUEUE:500}
+
+  llm:
+    ollama:
+      enabled: ${VITALSYNC_OLLAMA_ENABLED:false}
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      model: ${OLLAMA_MODEL:llama3.1:8b}
+      timeout-seconds: ${OLLAMA_TIMEOUT:20}
+      temperature: 0.2
+    gemini:
+      enabled: ${VITALSYNC_GEMINI_ENABLED:false}
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-2.0-flash}
+      timeout-seconds: ${GEMINI_TIMEOUT:20}
+      temperature: 0.2
+
+logging:
+  level:
+    com.vitalsync: ${VITALSYNC_LOG_LEVEL:INFO}

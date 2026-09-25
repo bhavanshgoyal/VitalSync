@@ -1,0 +1,37 @@
+{
+  "resolved_at": "2026-09-24T11:40:05.180150+00:00",
+  "kaggle_ref": "nasirayub2/human-vital-sign-dataset",
+  "kaggle_url": "https://www.kaggle.com/datasets/nasirayub2/human-vital-sign-dataset",
+  "resolved_path": "C:\\Users\\bhava\\.cache\\kagglehub\\datasets\\nasirayub2\\human-vital-sign-dataset\\versions\\1\\human_vital_signs_dataset_2024.csv",
+  "sha256": "d70375bce658249ff7b7b01de08af6e19ad6bb103527ef66b10be0c0065ec588",
+  "bytes": 38793004,
+  "rows": 200020,
+  "columns": 17,
+  "column_names": [
+    "Patient ID",
+    "Heart Rate",
+    "Respiratory Rate",
+    "Timestamp",
+    "Body Temperature",
+    "Oxygen Saturation",
+    "Systolic Blood Pressure",
+    "Diastolic Blood Pressure",
+    "Age",
+    "Gender",
+    "Weight (kg)",
+    "Height (m)",
+    "Derived_HRV",
+    "Derived_Pulse_Pressure",
+    "Derived_BMI",
+    "Derived_MAP",
+    "Risk Category"
+  ],
+  "label_column": "Risk Category",
+  "label_values": {
+    "High Risk": 105115,
+    "Low Risk": 94905
+  },
+  "matches_expected_shape": true,
+  "licence_note": "Redistribution is governed by the Kaggle dataset terms. The file is deliberately not vendored in this repository; this record exists so a published result can be tied to a specific file.",
+  "audit_note": "This dataset's Risk Category label is a deterministic rule over heart rate and BMI. See artifacts/audit.json and docs/MASTER_PLAN.md section 0 before using it to train anything."
+}

@@ -1,0 +1,293 @@
+{
+  "generated_at": "2026-09-24T10:21:31.678548+00:00",
+  "dataset": {
+    "kaggle_ref": "nasirayub2/human-vital-sign-dataset",
+    "resolved_path": "C:\\Users\\bhava\\.cache\\kagglehub\\datasets\\nasirayub2\\human-vital-sign-dataset\\versions\\1\\human_vital_signs_dataset_2024.csv",
+    "sha256": "d70375bce658249ff7b7b01de08af6e19ad6bb103527ef66b10be0c0065ec588",
+    "rows": 200020,
+    "columns": 17,
+    "column_names": [
+      "Patient ID",
+      "Heart Rate",
+      "Respiratory Rate",
+      "Timestamp",
+      "Body Temperature",
+      "Oxygen Saturation",
+      "Systolic Blood Pressure",
+      "Diastolic Blood Pressure",
+      "Age",
+      "Gender",
+      "Weight (kg)",
+      "Height (m)",
+      "Derived_HRV",
+      "Derived_Pulse_Pressure",
+      "Derived_BMI",
+      "Derived_MAP",
+      "Risk Category"
+    ],
+    "null_cells": 0,
+    "duplicate_rows": 0,
+    "class_counts": {
+      "High Risk": 105115,
+      "Low Risk": 94905
+    },
+    "n_classes": 2,
+    "base_rate_high_risk": 0.5255224477552245
+  },
+  "per_class_means": {
+    "Heart Rate": {
+      "High Risk": 83.57879465347476,
+      "Low Risk": 75.05352721142195
+    },
+    "Respiratory Rate": {
+      "High Risk": 15.486590876658898,
+      "Low Risk": 15.492618934724199
+    },
+    "Body Temperature": {
+      "High Risk": 36.74883927429873,
+      "Low Risk": 36.74781421555396
+    },
+    "Oxygen Saturation": {
+      "High Risk": 97.50347841788842,
+      "Low Risk": 97.50536261478206
+    },
+    "Systolic Blood Pressure": {
+      "High Risk": 124.40890453313038,
+      "Low Risk": 124.47016490174384
+    },
+    "Diastolic Blood Pressure": {
+      "High Risk": 79.51935499215145,
+      "Low Risk": 79.47777250935145
+    },
+    "Age": {
+      "High Risk": 53.49498168672407,
+      "Low Risk": 53.392329171276536
+    },
+    "Weight (kg)": {
+      "High Risk": 75.33526705214594,
+      "Low Risk": 74.6211173150965
+    },
+    "Height (m)": {
+      "High Risk": 1.73747205248383,
+      "Low Risk": 1.763941106483344
+    },
+    "Derived_HRV": {
+      "High Risk": 0.09992860495477733,
+      "Low Risk": 0.10001657521481219
+    },
+    "Derived_Pulse_Pressure": {
+      "High Risk": 44.889549540978926,
+      "Low Risk": 44.99239239239239
+    },
+    "Derived_BMI": {
+      "High Risk": 25.933353107362706,
+      "Low Risk": 23.97387550021877
+    },
+    "Derived_MAP": {
+      "High Risk": 94.48253817247776,
+      "Low Risk": 94.4752366401489
+    }
+  },
+  "observed_ranges": {
+    "Heart Rate": {
+      "min": 60.0,
+      "max": 99.0
+    },
+    "Respiratory Rate": {
+      "min": 12.0,
+      "max": 19.0
+    },
+    "Body Temperature": {
+      "min": 36.00000442562442,
+      "max": 37.49999177587785
+    },
+    "Oxygen Saturation": {
+      "min": 95.0000066683982,
+      "max": 99.99996250272244
+    },
+    "Systolic Blood Pressure": {
+      "min": 110.0,
+      "max": 139.0
+    },
+    "Diastolic Blood Pressure": {
+      "min": 70.0,
+      "max": 89.0
+    },
+    "Age": {
+      "min": 18.0,
+      "max": 89.0
+    },
+    "Weight (kg)": {
+      "min": 50.0001564760608,
+      "max": 99.99976465874605
+    },
+    "Height (m)": {
+      "min": 1.5000006649512407,
+      "max": 1.9999971351632664
+    },
+    "Derived_HRV": {
+      "min": 0.0500003115004905,
+      "max": 0.1499989847214607
+    },
+    "Derived_Pulse_Pressure": {
+      "min": 21.0,
+      "max": 69.0
+    },
+    "Derived_BMI": {
+      "min": 12.50597402883725,
+      "max": 44.37648711552241
+    },
+    "Derived_MAP": {
+      "min": 83.33333333333333,
+      "max": 105.66666666666666
+    }
+  },
+  "standardised_mean_difference": {
+    "Heart Rate": 0.7997477633198032,
+    "Respiratory Rate": 0.002627464054677899,
+    "Body Temperature": 0.0023658307193889947,
+    "Oxygen Saturation": 0.0013060983858988805,
+    "Systolic Blood Pressure": 0.007075655666463949,
+    "Diastolic Blood Pressure": 0.007221840167138721,
+    "Age": 0.004938213389185005,
+    "Weight (kg)": 0.04964366602799695,
+    "Height (m)": 0.18446813348133503,
+    "Derived_HRV": 0.0030477802229153706,
+    "Derived_Pulse_Pressure": 0.009882818688738372,
+    "Derived_BMI": 0.313328679596414,
+    "Derived_MAP": 0.001521673730868571
+  },
+  "mutual_information": {
+    "Derived_BMI": 0.36033876344302684,
+    "Heart Rate": 0.1741050624539373,
+    "Weight (kg)": 0.03357671212724522,
+    "Height (m)": 0.0165507940560905,
+    "Body Temperature": 0.004347831648600309,
+    "Age": 0.0018747721874441403,
+    "Systolic Blood Pressure": 0.0018423350333764965,
+    "Oxygen Saturation": 0.001470923752462605,
+    "Diastolic Blood Pressure": 0.0009867732972674848,
+    "Derived_Pulse_Pressure": 0.00023272292680620588,
+    "Respiratory Rate": 0.0,
+    "Derived_HRV": 0.0,
+    "Derived_MAP": 0.0
+  },
+  "decision_tree_depth3": {
+    "train_accuracy": 1.0,
+    "rule_text": "|--- Heart Rate <= 90.50\n|   |--- Derived_BMI <= 30.00\n|   |   |--- Derived_BMI <= 18.50\n|   |   |   |--- class: True\n|   |   |--- Derived_BMI >  18.50\n|   |   |   |--- class: False\n|   |--- Derived_BMI >  30.00\n|   |   |--- class: True\n|--- Heart Rate >  90.50\n|   |--- class: True\n"
+  },
+  "candidate_rule": {
+    "expression": "(Heart Rate > 90) OR (Derived_BMI > 30) OR (Derived_BMI < 18.5)",
+    "accuracy": 1.0,
+    "mismatches": 0,
+    "reproduces_label_exactly": true
+  },
+  "milestone_models": {
+    "random_forest": {
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "per_class": {
+        "False": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 18981.0
+        },
+        "True": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 21023.0
+        },
+        "accuracy": 1.0,
+        "macro avg": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 40004.0
+        },
+        "weighted avg": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 40004.0
+        }
+      },
+      "feature_importance": {
+        "Derived_BMI": 0.49117602161979135,
+        "Heart Rate": 0.3278846432934957,
+        "Weight (kg)": 0.08972297672842032,
+        "Height (m)": 0.0867202383172912,
+        "Body Temperature": 0.0007831423243407265,
+        "Derived_HRV": 0.0007543259787336949,
+        "Oxygen Saturation": 0.0007213104812046051,
+        "Age": 0.0004953964614210212,
+        "Derived_MAP": 0.0004741970755608075,
+        "Derived_Pulse_Pressure": 0.00039559224671321697,
+        "Systolic Blood Pressure": 0.000330185760901546,
+        "Diastolic Blood Pressure": 0.00029149886348852494,
+        "Respiratory Rate": 0.0002504708486372345
+      }
+    },
+    "gradient_boosting": {
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "per_class": {
+        "False": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 18981.0
+        },
+        "True": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 21023.0
+        },
+        "accuracy": 1.0,
+        "macro avg": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 40004.0
+        },
+        "weighted avg": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 40004.0
+        }
+      },
+      "feature_importance": {
+        "Derived_BMI": 0.7364341012174874,
+        "Heart Rate": 0.26356589878126424,
+        "Height (m)": 2.7994635409110803e-13,
+        "Body Temperature": 2.501545516569133e-13,
+        "Weight (kg)": 2.01307901157162e-13,
+        "Derived_HRV": 1.8946882219991373e-13,
+        "Derived_MAP": 1.859219371646675e-13,
+        "Oxygen Saturation": 8.901128011262735e-14,
+        "Age": 5.2671181190399373e-14,
+        "Derived_Pulse_Pressure": 2.4470322751504462e-18,
+        "Respiratory Rate": -3.2357879445023355e-21,
+        "Systolic Blood Pressure": -1.5640541011160865e-17,
+        "Diastolic Blood Pressure": -5.602801509507824e-17
+      }
+    }
+  },
+  "ablation_vitals_only": {
+    "features": [
+      "Oxygen Saturation",
+      "Systolic Blood Pressure",
+      "Diastolic Blood Pressure",
+      "Body Temperature",
+      "Respiratory Rate"
+    ],
+    "accuracy": 0.5184981501849815,
+    "macro_f1": 0.42085437024608685,
+    "majority_class_baseline": 0.5255224477552245,
+    "interpretation": "Accuracy at or below the majority-class baseline means these five vital signs carry no information about the published label."
+  },
+  "conclusion": "The Risk Category label is reproduced exactly by (Heart Rate > 90) OR (Derived_BMI > 30) OR (Derived_BMI < 18.5). Oxygen saturation, blood pressure, body temperature and respiratory rate are statistically identical across the two classes and an ablation trained on them alone does not beat the majority-class baseline. Classification scores reported on this dataset measure Boolean rule recovery and must not be presented as clinical risk prediction."
+}

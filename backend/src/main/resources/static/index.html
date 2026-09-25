@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VitalSync Clinician Dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div>
+      <h1>VitalSync</h1>
+      <p class="brand-sub">IoMT risk triage &amp; resilient summarization</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span id="conn-status" class="pill pill-muted">connecting…</span>
+    <button id="refresh-btn" type="button" class="btn">Refresh</button>
+  </div>
+</header>
+
+<p class="disclaimer" role="note">
+  <strong>Research prototype.</strong> Not a medical device. Not for clinical use.
+  All data shown is simulated. Risk bands are software triage categories, not diagnoses.
+</p>
+
+<main>
+
+  <section id="login-panel" class="card" hidden>
+    <h2>Sign in</h2>
+    <p class="muted">Demo credentials are set by environment variables; the defaults are <code>clinician</code> / <code>vitalsync-demo</code>.</p>
+    <form id="login-form" class="login-form">
+      <label>Username <input id="username" type="text" value="clinician" autocomplete="username"></label>
+      <label>Password <input id="password" type="password" value="vitalsync-demo" autocomplete="current-password"></label>
+      <button type="submit" class="btn btn-primary">Get token</button>
+    </form>
+    <p id="login-error" class="error" hidden></p>
+  </section>
+
+  <div id="app" hidden>
+
+    <div class="controls">
+      <label for="patient-select">Patient</label>
+      <select id="patient-select"></select>
+      <label for="window-select">Window</label>
+      <select id="window-select">
+        <option value="25">Last 25 readings</option>
+        <option value="50" selected>Last 50 readings</option>
+        <option value="100">Last 100 readings</option>
+      </select>
+      <button id="analyze-btn" type="button" class="btn">Analyze now</button>
+    </div>
+
+    <!-- Current state -->
+    <section class="card" aria-labelledby="status-heading">
+      <h2 id="status-heading">Latest assessment</h2>
+
+      <div class="risk-row">
+        <div id="risk-badge" class="risk-badge risk-unknown">
+          <span class="risk-icon" aria-hidden="true">?</span>
+          <span class="risk-text">
+            <span id="risk-band" class="risk-band">No data</span>
+            <span id="risk-confidence" class="risk-conf"></span>
+          </span>
+        </div>
+
+        <div class="news2-box">
+          <span class="news2-label">NEWS2 aggregate</span>
+          <span id="news2-total" class="news2-value">–</span>
+          <span id="news2-band" class="news2-band"></span>
+        </div>
+      </div>
+
+      <div class="tiles" id="tiles">
+        <div class="tile"><span class="tile-label">Heart rate</span><span class="tile-value" id="t-hr">–</span><span class="tile-unit">bpm</span></div>
+        <div class="tile"><span class="tile-label">SpO<sub>2</sub></span><span class="tile-value" id="t-spo2">–</span><span class="tile-unit">%</span></div>
+        <div class="tile"><span class="tile-label">Blood pressure</span><span class="tile-value" id="t-bp">–</span><span class="tile-unit">mmHg</span></div>
+        <div class="tile"><span class="tile-label">Temperature</span><span class="tile-value" id="t-temp">–</span><span class="tile-unit">&deg;C</span></div>
+        <div class="tile"><span class="tile-label">Resp. rate</span><span class="tile-value" id="t-rr">–</span><span class="tile-unit">/min</span></div>
+        <div class="tile"><span class="tile-label">Shock index</span><span class="tile-value" id="t-si">–</span><span class="tile-unit">HR/SBP</span></div>
+      </div>
+    </section>
+
+    <!-- Summary -->
+    <section class="card" aria-labelledby="summary-heading">
+      <div class="card-head">
+        <h2 id="summary-heading">Clinical summary</h2>
+        <div class="provenance">
+          <span class="prov-label">Produced by</span>
+          <span id="summary-provider" class="pill pill-muted">–</span>
+          <span id="summary-latency" class="muted small"></span>
+        </div>
+      </div>
+      <ul id="summary-list" class="summary-list">
+        <li class="muted">No summary yet.</li>
+      </ul>
+      <p class="muted small">
+        Generated text is for clinician review. The tier that produced it is recorded
+        with every assessment so the fallback cascade is observable rather than implied.
+      </p>
+    </section>
+
+    <!-- Trends. Deliberately one chart per unit: heart rate (bpm) and SpO2 (%)
+         are different scales, and plotting them on twin y-axes would let the
+         designer choose the apparent correlation. -->
+    <section class="card" aria-labelledby="trends-heading">
+      <div class="card-head">
+        <h2 id="trends-heading">Trends</h2>
+        <button id="table-toggle" type="button" class="btn btn-small" aria-expanded="false">Show data table</button>
+      </div>
+
+      <div class="chart-grid">
+        <figure class="chart-figure">
+          <figcaption>Heart rate <span class="unit">bpm</span></figcaption>
+          <div class="chart-box"><canvas id="chart-hr"></canvas></div>
+        </figure>
+
+        <figure class="chart-figure">
+          <figcaption>Oxygen saturation <span class="unit">%</span></figcaption>
+          <div class="chart-box"><canvas id="chart-spo2"></canvas></div>
+        </figure>
+
+        <figure class="chart-figure">
+          <figcaption>Blood pressure <span class="unit">mmHg</span></figcaption>
+          <div class="chart-box"><canvas id="chart-bp"></canvas></div>
+        </figure>
+
+        <figure class="chart-figure">
+          <figcaption>Respiratory rate <span class="unit">breaths/min</span></figcaption>
+          <div class="chart-box"><canvas id="chart-rr"></canvas></div>
+        </figure>
+      </div>
+
+      <div id="table-wrap" class="table-wrap" hidden>
+        <table id="data-table">
+          <caption class="sr-only">Recent vital-sign readings</caption>
+          <thead>
+            <tr>
+              <th scope="col">Observed</th><th scope="col">HR</th><th scope="col">SpO2</th>
+              <th scope="col">SBP</th><th scope="col">DBP</th><th scope="col">Temp</th>
+              <th scope="col">RR</th><th scope="col">SI</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

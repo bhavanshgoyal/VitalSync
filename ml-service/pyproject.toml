@@ -1,0 +1,12 @@
+[project]
+name = "vitalsync-ml"
+version = "1.0.0"
+description = "VitalSync risk triage and clinical scoring for simulated IoMT telemetry"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.setuptools.packages.find]
+include = ["vitalsync_ml*"]

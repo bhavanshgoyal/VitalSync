@@ -1,0 +1,661 @@
+{
+  "generated_at": "2026-09-24T11:25:23.734793+00:00",
+  "model_version": "vitalsync-triage-1.0.0",
+  "selected_model": "gradient_boosting",
+  "selection_metric": "macro_f1",
+  "selection_criteria_comparison": {
+    "by_macro_f1": "gradient_boosting",
+    "by_mean_cost": "random_forest",
+    "by_fewest_missed_high": "random_forest",
+    "criteria_agree": false,
+    "note": "macro_f1 is the pre-registered criterion. Where it disagrees with the asymmetric-cost criterion, the disagreement is a result: the F1-optimal model can carry a higher rate of HIGH-graded observations reported as LOW."
+  },
+  "classes": [
+    "LOW",
+    "MEDIUM",
+    "HIGH"
+  ],
+  "features": [
+    "heart_rate",
+    "spo2",
+    "temperature_c",
+    "respiratory_rate",
+    "systolic_bp",
+    "diastolic_bp",
+    "shock_index",
+    "pulse_pressure",
+    "map_mmhg",
+    "on_oxygen",
+    "alert"
+  ],
+  "label_definition": "NEWS2 (RCP 2017) escalation band computed on LATENT clean physiology; models observe only sensor-corrupted telemetry.",
+  "cohort": {
+    "n_patients": 30000,
+    "readings_per_patient": 4,
+    "rows": 120000,
+    "seed": 42,
+    "band_counts": {
+      "LOW": 86764,
+      "HIGH": 21624,
+      "MEDIUM": 11612
+    }
+  },
+  "split": {
+    "strategy": "GroupShuffleSplit on patient_id",
+    "test_size": 0.2,
+    "train_rows": 96000,
+    "test_rows": 24000,
+    "patient_overlap": 0
+  },
+  "results": [
+    {
+      "model": "news2_rule_on_observed",
+      "accuracy": 0.9004583333333334,
+      "macro_f1": 0.8005543437761512,
+      "weighted_f1": 0.9046191903817413,
+      "per_class": {
+        "LOW": {
+          "precision": 0.9657747721258454,
+          "recall": 0.9419018123422803,
+          "f1-score": 0.9536889172788247,
+          "support": 17436.0
+        },
+        "MEDIUM": {
+          "precision": 0.5042553191489362,
+          "recall": 0.6163849154746424,
+          "f1-score": 0.5547103569338795,
+          "support": 2307.0
+        },
+        "HIGH": {
+          "precision": 0.9020359281437126,
+          "recall": 0.8846605590791637,
+          "f1-score": 0.8932637571157496,
+          "support": 4257.0
+        },
+        "accuracy": 0.9004583333333334,
+        "macro avg": {
+          "precision": 0.7906886731394981,
+          "recall": 0.8143157622986954,
+          "f1-score": 0.8005543437761512,
+          "support": 24000.0
+        },
+        "weighted avg": {
+          "precision": 0.9101055372571091,
+          "recall": 0.9004583333333334,
+          "f1-score": 0.9046191903817413,
+          "support": 24000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          16423,
+          961,
+          52
+        ],
+        [
+          528,
+          1422,
+          357
+        ],
+        [
+          54,
+          437,
+          3766
+        ]
+      ],
+      "confusion_labels": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "clinical": {
+        "high_recall": 0.8846605590791637,
+        "escalation_recall": 0.9113345521023766,
+        "missed_high_count": 54,
+        "missed_high_rate": 0.012684989429175475,
+        "undertriage_rate": 0.042458333333333334,
+        "overtriage_rate": 0.05708333333333333,
+        "mean_cost": 0.31654166666666667,
+        "total_cost": 7597.0,
+        "cost_matrix": [
+          [
+            0.0,
+            1.0,
+            2.0
+          ],
+          [
+            5.0,
+            0.0,
+            1.0
+          ],
+          [
+            25.0,
+            5.0,
+            0.0
+          ]
+        ],
+        "cost_matrix_note": "Asymmetric cost weights are a stated assumption, not derived from clinical outcome data.",
+        "support": {
+          "n": 24000,
+          "n_high": 4257,
+          "n_escalation": 6564
+        }
+      }
+    },
+    {
+      "model": "threshold_alarms",
+      "accuracy": 0.7351666666666666,
+      "macro_f1": 0.6279595072684048,
+      "weighted_f1": 0.7764914816651447,
+      "per_class": {
+        "LOW": {
+          "precision": 0.9849916196861191,
+          "recall": 0.7415118146363845,
+          "f1-score": 0.8460833715071003,
+          "support": 17436.0
+        },
+        "MEDIUM": {
+          "precision": 0.1931475235221019,
+          "recall": 0.4716081491114001,
+          "f1-score": 0.2740554156171285,
+          "support": 2307.0
+        },
+        "HIGH": {
+          "precision": 0.6920435031482541,
+          "recall": 0.8520084566596194,
+          "f1-score": 0.7637397346809854,
+          "support": 4257.0
+        },
+        "accuracy": 0.7351666666666666,
+        "macro avg": {
+          "precision": 0.6233942154521585,
+          "recall": 0.6883761401358014,
+          "f1-score": 0.6279595072684048,
+          "support": 24000.0
+        },
+        "weighted avg": {
+          "precision": 0.8569139337714493,
+          "recall": 0.7351666666666666,
+          "f1-score": 0.7764914816651447,
+          "support": 24000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          12929,
+          3945,
+          562
+        ],
+        [
+          167,
+          1088,
+          1052
+        ],
+        [
+          30,
+          600,
+          3627
+        ]
+      ],
+      "confusion_labels": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "clinical": {
+        "high_recall": 0.8520084566596194,
+        "escalation_recall": 0.9699878123095673,
+        "missed_high_count": 30,
+        "missed_high_rate": 0.007047216349541931,
+        "undertriage_rate": 0.03320833333333333,
+        "overtriage_rate": 0.231625,
+        "mean_cost": 0.44608333333333333,
+        "total_cost": 10706.0,
+        "cost_matrix": [
+          [
+            0.0,
+            1.0,
+            2.0
+          ],
+          [
+            5.0,
+            0.0,
+            1.0
+          ],
+          [
+            25.0,
+            5.0,
+            0.0
+          ]
+        ],
+        "cost_matrix_note": "Asymmetric cost weights are a stated assumption, not derived from clinical outcome data.",
+        "support": {
+          "n": 24000,
+          "n_high": 4257,
+          "n_escalation": 6564
+        }
+      }
+    },
+    {
+      "model": "logistic_regression",
+      "accuracy": 0.8677083333333333,
+      "macro_f1": 0.7865842178651087,
+      "weighted_f1": 0.8857205261605002,
+      "per_class": {
+        "LOW": {
+          "precision": 0.9861476303469505,
+          "recall": 0.8819109887588896,
+          "f1-score": 0.9311211359714191,
+          "support": 17436.0
+        },
+        "MEDIUM": {
+          "precision": 0.40823888404533565,
+          "recall": 0.811876896402254,
+          "f1-score": 0.5432922407541697,
+          "support": 2307.0
+        },
+        "HIGH": {
+          "precision": 0.9361089290390154,
+          "recall": 0.8397932816537468,
+          "f1-score": 0.8853392768697375,
+          "support": 4257.0
+        },
+        "accuracy": 0.8677083333333333,
+        "macro avg": {
+          "precision": 0.7768318144771005,
+          "recall": 0.8445270556049636,
+          "f1-score": 0.7865842178651087,
+          "support": 24000.0
+        },
+        "weighted avg": {
+          "precision": 0.9217205374642128,
+          "recall": 0.8677083333333333,
+          "f1-score": 0.8857205261605002,
+          "support": 24000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          15377,
+          2043,
+          16
+        ],
+        [
+          206,
+          1873,
+          228
+        ],
+        [
+          10,
+          672,
+          3575
+        ]
+      ],
+      "confusion_labels": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "clinical": {
+        "high_recall": 0.8397932816537468,
+        "escalation_recall": 0.9670932358318098,
+        "missed_high_count": 10,
+        "missed_high_rate": 0.002349072116513977,
+        "undertriage_rate": 0.037,
+        "overtriage_rate": 0.09529166666666666,
+        "mean_cost": 0.28929166666666667,
+        "total_cost": 6943.0,
+        "cost_matrix": [
+          [
+            0.0,
+            1.0,
+            2.0
+          ],
+          [
+            5.0,
+            0.0,
+            1.0
+          ],
+          [
+            25.0,
+            5.0,
+            0.0
+          ]
+        ],
+        "cost_matrix_note": "Asymmetric cost weights are a stated assumption, not derived from clinical outcome data.",
+        "support": {
+          "n": 24000,
+          "n_high": 4257,
+          "n_escalation": 6564
+        }
+      },
+      "fit_seconds": 1.36
+    },
+    {
+      "model": "random_forest",
+      "accuracy": 0.9004583333333334,
+      "macro_f1": 0.8266806262338355,
+      "weighted_f1": 0.9106719519003873,
+      "per_class": {
+        "LOW": {
+          "precision": 0.9879443201590853,
+          "recall": 0.9117916953429686,
+          "f1-score": 0.948341684562157,
+          "support": 17436.0
+        },
+        "MEDIUM": {
+          "precision": 0.4947257383966245,
+          "recall": 0.8131772865192891,
+          "f1-score": 0.6151828168552221,
+          "support": 2307.0
+        },
+        "HIGH": {
+          "precision": 0.9322157434402333,
+          "recall": 0.9013389711064129,
+          "f1-score": 0.9165173772841275,
+          "support": 4257.0
+        },
+        "accuracy": 0.9004583333333334,
+        "macro avg": {
+          "precision": 0.8049619339986477,
+          "recall": 0.8754359843228903,
+          "f1-score": 0.8266806262338355,
+          "support": 24000.0
+        },
+        "weighted avg": {
+          "precision": 0.9306488276916624,
+          "recall": 0.9004583333333334,
+          "f1-score": 0.9106719519003873,
+          "support": 24000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          15898,
+          1502,
+          36
+        ],
+        [
+          188,
+          1876,
+          243
+        ],
+        [
+          6,
+          414,
+          3837
+        ]
+      ],
+      "confusion_labels": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "clinical": {
+        "high_recall": 0.9013389711064129,
+        "escalation_recall": 0.9704448507007922,
+        "missed_high_count": 6,
+        "missed_high_rate": 0.0014094432699083862,
+        "undertriage_rate": 0.025333333333333333,
+        "overtriage_rate": 0.07420833333333333,
+        "mean_cost": 0.207375,
+        "total_cost": 4977.0,
+        "cost_matrix": [
+          [
+            0.0,
+            1.0,
+            2.0
+          ],
+          [
+            5.0,
+            0.0,
+            1.0
+          ],
+          [
+            25.0,
+            5.0,
+            0.0
+          ]
+        ],
+        "cost_matrix_note": "Asymmetric cost weights are a stated assumption, not derived from clinical outcome data.",
+        "support": {
+          "n": 24000,
+          "n_high": 4257,
+          "n_escalation": 6564
+        }
+      },
+      "fit_seconds": 2.46
+    },
+    {
+      "model": "gradient_boosting",
+      "accuracy": 0.9259583333333333,
+      "macro_f1": 0.8324050770605954,
+      "weighted_f1": 0.9244843128506169,
+      "per_class": {
+        "LOW": {
+          "precision": 0.9626980071538068,
+          "recall": 0.9724707501720579,
+          "f1-score": 0.9675597021313019,
+          "support": 17436.0
+        },
+        "MEDIUM": {
+          "precision": 0.6421102661596958,
+          "recall": 0.5856090160381447,
+          "f1-score": 0.6125595103151212,
+          "support": 2307.0
+        },
+        "HIGH": {
+          "precision": 0.9143123978519729,
+          "recall": 0.9198966408268734,
+          "f1-score": 0.917096018735363,
+          "support": 4257.0
+        },
+        "accuracy": 0.9259583333333333,
+        "macro avg": {
+          "precision": 0.8397068903884919,
+          "recall": 0.8259921356790253,
+          "f1-score": 0.8324050770605954,
+          "support": 24000.0
+        },
+        "weighted avg": {
+          "precision": 0.9232991131008351,
+          "recall": 0.9259583333333333,
+          "f1-score": 0.9244843128506169,
+          "support": 24000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          16956,
+          447,
+          33
+        ],
+        [
+          622,
+          1351,
+          334
+        ],
+        [
+          35,
+          306,
+          3916
+        ]
+      ],
+      "confusion_labels": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "clinical": {
+        "high_recall": 0.9198966408268734,
+        "escalation_recall": 0.899908592321755,
+        "missed_high_count": 35,
+        "missed_high_rate": 0.00822175240779892,
+        "undertriage_rate": 0.040125,
+        "overtriage_rate": 0.033916666666666664,
+        "mean_cost": 0.26508333333333334,
+        "total_cost": 6362.0,
+        "cost_matrix": [
+          [
+            0.0,
+            1.0,
+            2.0
+          ],
+          [
+            5.0,
+            0.0,
+            1.0
+          ],
+          [
+            25.0,
+            5.0,
+            0.0
+          ]
+        ],
+        "cost_matrix_note": "Asymmetric cost weights are a stated assumption, not derived from clinical outcome data.",
+        "support": {
+          "n": 24000,
+          "n_high": 4257,
+          "n_escalation": 6564
+        }
+      },
+      "fit_seconds": 88.98
+    }
+  ],
+  "headline": {
+    "best_learned_macro_f1": 0.8324050770605954,
+    "news2_rule_macro_f1": 0.8005543437761512,
+    "delta": 0.03185073328444421,
+    "best_learned_missed_high_rate": 0.00822175240779892,
+    "news2_rule_missed_high_rate": 0.012684989429175475,
+    "best_learned_mean_cost": 0.26508333333333334,
+    "news2_rule_mean_cost": 0.31654166666666667
+  },
+  "calibration": {
+    "n_bins": 10,
+    "ece": 0.005292729861316583,
+    "mce": 0.11306155111064342,
+    "bins": [
+      {
+        "bin_lower": 0.0,
+        "bin_upper": 0.1,
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null,
+        "gap": null
+      },
+      {
+        "bin_lower": 0.1,
+        "bin_upper": 0.2,
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null,
+        "gap": null
+      },
+      {
+        "bin_lower": 0.2,
+        "bin_upper": 0.3,
+        "count": 0,
+        "mean_confidence": null,
+        "accuracy": null,
+        "gap": null
+      },
+      {
+        "bin_lower": 0.3,
+        "bin_upper": 0.4,
+        "count": 26,
+        "mean_confidence": 0.3869384488893566,
+        "accuracy": 0.5,
+        "gap": 0.11306155111064342,
+        "signed_gap": -0.11306155111064342
+      },
+      {
+        "bin_lower": 0.4,
+        "bin_upper": 0.5,
+        "count": 414,
+        "mean_confidence": 0.4705618221657839,
+        "accuracy": 0.45410628019323673,
+        "gap": 0.016455541972547172,
+        "signed_gap": 0.016455541972547172
+      },
+      {
+        "bin_lower": 0.5,
+        "bin_upper": 0.6,
+        "count": 1054,
+        "mean_confidence": 0.5496376867884912,
+        "accuracy": 0.5483870967741935,
+        "gap": 0.0012505900142977255,
+        "signed_gap": 0.0012505900142977255
+      },
+      {
+        "bin_lower": 0.6,
+        "bin_upper": 0.7,
+        "count": 1063,
+        "mean_confidence": 0.6505168150776656,
+        "accuracy": 0.6114769520225776,
+        "gap": 0.039039863055088,
+        "signed_gap": 0.039039863055088
+      },
+      {
+        "bin_lower": 0.7,
+        "bin_upper": 0.8,
+        "count": 1009,
+        "mean_confidence": 0.7510949322214237,
+        "accuracy": 0.7333994053518335,
+        "gap": 0.017695526869590195,
+        "signed_gap": 0.017695526869590195
+      },
+      {
+        "bin_lower": 0.8,
+        "bin_upper": 0.9,
+        "count": 1283,
+        "mean_confidence": 0.8528440080717677,
+        "accuracy": 0.8425565081839439,
+        "gap": 0.010287499887823848,
+        "signed_gap": 0.010287499887823848
+      },
+      {
+        "bin_lower": 0.9,
+        "bin_upper": 1.0,
+        "count": 19151,
+        "mean_confidence": 0.9884391323327261,
+        "accuracy": 0.9907054461907995,
+        "gap": 0.00226631385807341,
+        "signed_gap": -0.00226631385807341
+      }
+    ],
+    "interpretation": "ECE is the support-weighted mean gap between stated confidence and observed accuracy. A positive signed_gap in a bin means the model is over-confident in that range.",
+    "brier_score": 0.10219382331836721,
+    "mean_confidence": 0.92738924844258,
+    "overall_accuracy": 0.9259583333333333,
+    "overconfidence": 0.0014309151092466443,
+    "per_predicted_class": {
+      "LOW": {
+        "n_predicted": 17613,
+        "mean_confidence": 0.9621649883710971,
+        "precision": 0.9626980071538068,
+        "overconfidence": -0.0005330187827097266
+      },
+      "MEDIUM": {
+        "n_predicted": 2104,
+        "mean_confidence": 0.6590217018744089,
+        "precision": 0.6421102661596958,
+        "overconfidence": 0.016911435714713097
+      },
+      "HIGH": {
+        "n_predicted": 4283,
+        "mean_confidence": 0.9162148871580743,
+        "precision": 0.9143123978519729,
+        "overconfidence": 0.0019024893061013737
+      }
+    }
+  },
+  "environment": {
+    "python": "3.13.14",
+    "sklearn": "1.9.0",
+    "numpy": "2.5.1",
+    "pandas": "3.0.5",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "disclaimer": "Simulated cohort. Software evaluation only. Not clinical validation."
+}

@@ -1,0 +1,39 @@
+{
+  "model_version": "vitalsync-triage-1.0.0",
+  "selected_model": "gradient_boosting",
+  "classes": [
+    "LOW",
+    "MEDIUM",
+    "HIGH"
+  ],
+  "features": [
+    "heart_rate",
+    "spo2",
+    "temperature_c",
+    "respiratory_rate",
+    "systolic_bp",
+    "diastolic_bp",
+    "shock_index",
+    "pulse_pressure",
+    "map_mmhg",
+    "on_oxygen",
+    "alert"
+  ],
+  "artifact_sha256": "43b4a69451bfba1600a0bfe917689a047acc67009b8c77edb17a827f490c7515",
+  "artifact_bytes": 1414626,
+  "trained_at": "2026-09-24T11:25:23.734793+00:00",
+  "macro_f1": 0.8324050770605954,
+  "accuracy": 0.9259583333333333,
+  "high_recall": 0.9198966408268734,
+  "missed_high_rate": 0.00822175240779892,
+  "expected_calibration_error": 0.005292729861316583,
+  "brier_score": 0.10219382331836721,
+  "confidence_caveat": "Reported confidence is an uncalibrated ensemble score unless expected_calibration_error is small. See artifacts/metrics.json for the reliability table.",
+  "intended_use": "Research prototype triage of simulated IoMT vital-sign telemetry.",
+  "out_of_scope": [
+    "diagnosis",
+    "treatment decisions",
+    "real patient care",
+    "any use on real PHI"
+  ]
+}

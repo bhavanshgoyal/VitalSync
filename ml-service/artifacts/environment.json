@@ -1,0 +1,32 @@
+{
+  "captured_at": "2026-09-24T11:40:02.495932+00:00",
+  "python": {
+    "version": "3.13.14",
+    "implementation": "CPython",
+    "executable": "C:\\Users\\bhava\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe"
+  },
+  "packages": {
+    "numpy": "2.5.1",
+    "pandas": "3.0.5",
+    "scikit-learn": "1.9.0",
+    "scipy": "1.18.0",
+    "joblib": "1.5.3",
+    "fastapi": "0.141.1",
+    "pydantic": "2.13.4"
+  },
+  "platform": {
+    "system": "Windows",
+    "release": "11",
+    "version": "10.0.26200",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "cpu_count": 16
+  },
+  "tooling": {
+    "docker": "Docker version 29.6.1, build 8900f1d",
+    "docker_compose": "Docker Compose version v5.2.0",
+    "git_commit": "fatal: not a git repository (or any of the parent directories): .git",
+    "git_dirty": true
+  },
+  "note": "Timing results depend on this hardware. Classification results depend on the library versions and the recorded seeds, not on the machine."
+}
