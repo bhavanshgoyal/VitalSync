@@ -3,11 +3,15 @@ package com.vitalsync.service;
 import com.vitalsync.service.summary.FaithfulnessChecker;
 import com.vitalsync.service.summary.SummaryProvider;
 import com.vitalsync.service.summary.SummaryRequest;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -24,8 +28,16 @@ public class SummarizationService {
     private static final Logger log = LoggerFactory.getLogger(SummarizationService.class);
 
     private final List<SummaryProvider> providers;
+    private final MeterRegistry meters;
 
+    /** Test convenience: counters go to a throwaway registry. */
     public SummarizationService(List<SummaryProvider> providers) {
+        this(providers, new SimpleMeterRegistry());
+    }
+
+    @Autowired
+    public SummarizationService(List<SummaryProvider> providers, MeterRegistry meters) {
+        this.meters = meters;
         this.providers = providers.stream()
                 .sorted(Comparator.comparingInt(SummaryProvider::order))
                 .toList();
@@ -54,6 +66,7 @@ public class SummarizationService {
                 continue;
             }
             long tierStart = System.nanoTime();
+            attempt(provider.name());
             Optional<String> text;
             try {
                 text = provider.summarize(request);
@@ -63,6 +76,9 @@ public class SummarizationService {
                 log.warn("Tier {} threw, treating as failure: {}",
                         provider.name(), e.getMessage());
                 text = Optional.empty();
+            }
+            if (text.isEmpty()) {
+                failed(provider.name());
             }
             if (text.isPresent()) {
                 double ms = (System.nanoTime() - tierStart) / 1_000_000.0;
@@ -77,6 +93,7 @@ public class SummarizationService {
                 if (!faith.faithful() && !terminal) {
                     log.warn("Tier {} produced an unfaithful summary ({}); "
                             + "falling through", provider.name(), faith.problems());
+                    rejected(provider.name());
                     continue;
                 }
                 if (!faith.faithful()) {
@@ -102,6 +119,21 @@ public class SummarizationService {
                         + "- A clinician must review the numeric values directly.",
                 "none",
                 (System.nanoTime() - start) / 1_000_000.0);
+    }
+
+    private void attempt(String tier) {
+        Counter.builder("vitalsync.summary.attempt")
+                .tag("tier", tier).register(meters).increment();
+    }
+
+    private void rejected(String tier) {
+        Counter.builder("vitalsync.summary.rejected")
+                .tag("tier", tier).register(meters).increment();
+    }
+
+    private void failed(String tier) {
+        Counter.builder("vitalsync.summary.failed")
+                .tag("tier", tier).register(meters).increment();
     }
 
     public List<String> activeProviders() {

@@ -13,6 +13,7 @@ public record RiskAssessment(
         Double probHigh,
         Integer news2Total,
         String news2Band,
+        String news2PerParameterJson,
         String modelVersion,
         Double mlLatencyMs,
         boolean mlAvailable,

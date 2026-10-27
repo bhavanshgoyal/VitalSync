@@ -16,7 +16,7 @@ def request_json(
     body: Optional[Dict] = None,
     token: Optional[str] = None,
     method: str = "GET",
-    timeout: float = 30.0,
+    timeout: float = 120.0,
 ):
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(url, data=data, method=method)

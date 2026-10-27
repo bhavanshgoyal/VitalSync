@@ -1,0 +1,292 @@
+/* Cards, badges, vital tiles, NEWS2 breakdown, charts, tables. */
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--s4);
+  box-shadow: var(--shadow-1);
+}
+
+.card-head {
+  display: flex; align-items: baseline; gap: var(--s3);
+  flex-wrap: wrap; margin-bottom: var(--s3);
+}
+.card-head .spacer { margin-left: auto; }
+
+/* ----------------------------------------------------------- risk badge */
+/* Colour is never the only channel: every badge carries a glyph and a word. */
+
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px 3px 7px;
+  border-radius: var(--radius-pill);
+  border: 1px solid;
+  font-size: 12px; font-weight: 650;
+  white-space: nowrap;
+}
+.badge .glyph {
+  width: 15px; height: 15px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 10px; font-weight: 800; color: #fff; flex: none;
+}
+
+.badge[data-band="LOW"]     { background: var(--tint-good);     border-color: var(--status-good);     color: var(--status-good); }
+.badge[data-band="MEDIUM"]  { background: var(--tint-warning);  border-color: var(--status-warning);  color: #8a6000; }
+.badge[data-band="HIGH"]    { background: var(--tint-critical); border-color: var(--status-critical); color: var(--status-critical); }
+.badge[data-band="UNKNOWN"] { background: var(--tint-unknown);  border-color: var(--border-strong);   color: var(--text-muted); }
+
+.badge[data-band="LOW"]     .glyph { background: var(--status-good); }
+.badge[data-band="MEDIUM"]  .glyph { background: var(--status-warning); color: #241a00; }
+.badge[data-band="HIGH"]    .glyph { background: var(--status-critical); }
+.badge[data-band="UNKNOWN"] .glyph { background: var(--status-unknown); }
+
+:root[data-theme="dark"] .badge[data-band="MEDIUM"],
+@media (prefers-color-scheme: dark) { }
+:root[data-theme="dark"] .badge[data-band="MEDIUM"] { color: var(--status-warning); }
+
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 11px; font-weight: 600;
+  color: var(--text-secondary);
+}
+.pill[data-provider="ollama"]     { border-color: var(--series-1); color: var(--series-1); }
+.pill[data-provider="gemini"]     { border-color: var(--series-2); color: var(--series-2); }
+.pill[data-provider="rule-based"] { border-color: var(--series-3); color: var(--series-3); }
+
+/* --------------------------------------------------------- ward board */
+
+.ward-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: var(--s4);
+}
+
+.patient-card {
+  display: block; width: 100%; text-align: left;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--s4);
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  transition: border-color var(--speed), box-shadow var(--speed), transform var(--speed);
+}
+.patient-card:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
+
+.patient-card[data-band="LOW"]     { border-left-color: var(--status-good); }
+.patient-card[data-band="MEDIUM"]  { border-left-color: var(--status-warning); }
+.patient-card[data-band="HIGH"]    { border-left-color: var(--status-critical); }
+.patient-card[data-band="UNKNOWN"] { border-left-color: var(--status-unknown); }
+
+.patient-card.stale { opacity: 0.72; border-style: dashed; }
+
+.pc-head { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
+.pc-id   { font-weight: 700; font-size: 15px; }
+.pc-name { color: var(--text-muted); font-size: 12px; }
+.pc-head .spacer { margin-left: auto; }
+
+.pc-vitals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+.pc-vital { display: flex; flex-direction: column; }
+.pc-vital .v { font-size: 17px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.pc-vital .k { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+.pc-foot {
+  display: flex; align-items: center; gap: var(--s2);
+  font-size: 11px; color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: var(--s2);
+}
+.pc-foot .spacer { margin-left: auto; }
+
+.sparkline { display: block; width: 100%; height: 30px; margin-bottom: var(--s2); }
+
+.news2-chip {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.news2-chip .n { font-size: 19px; font-weight: 700; line-height: 1; }
+.news2-chip .l { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+
+/* -------------------------------------------------- patient detail: tiles */
+
+.vitals-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--s3);
+}
+
+/* Monitor convention: the number dominates, the unit is subordinate, and the
+   parameter colour is constant everywhere in the app. */
+.vtile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent, var(--border-strong));
+  border-radius: var(--radius);
+  padding: var(--s3) var(--s4);
+}
+.vtile .k {
+  font-size: 11px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.vtile .v {
+  font-size: 30px; font-weight: 680; line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent, var(--text-primary));
+}
+.vtile .u { font-size: 11px; color: var(--text-muted); margin-left: 3px; }
+.vtile .d { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.vtile[data-vital="hr"]   { --accent: var(--vital-hr); }
+.vtile[data-vital="spo2"] { --accent: var(--vital-spo2); }
+.vtile[data-vital="bp"]   { --accent: var(--vital-bp); }
+.vtile[data-vital="temp"] { --accent: var(--vital-temp); }
+.vtile[data-vital="rr"]   { --accent: var(--vital-rr); }
+.vtile[data-vital="si"]   { --accent: var(--vital-si); }
+
+.trend-up::before   { content: "\2191 "; }
+.trend-down::before { content: "\2193 "; }
+.trend-flat::before { content: "\2192 "; }
+
+/* ------------------------------------------------- NEWS2 breakdown bars */
+/* "NEWS2 = 7" is opaque. This shows which parameters bought those points. */
+
+.breakdown { display: grid; gap: 6px; }
+
+.bd-row {
+  display: grid;
+  grid-template-columns: 124px minmax(60px, 220px) 24px;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 12px;
+}
+.bd-label { color: var(--text-secondary); }
+/* Both are spans, so they need display:block -- an inline element ignores
+   width and height, which silently renders every bar empty. */
+.bd-track {
+  display: block;
+  height: 9px;
+  max-width: 220px;
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.bd-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--status-good);
+  transition: width var(--speed);
+}
+/* Zero points is a legitimate reading, not a missing bar: show an empty track
+   rather than a sliver that reads as "a little bit of risk". */
+.bd-fill[data-points="0"] { min-width: 0; }
+.bd-fill[data-points="1"] { background: var(--series-4); }
+.bd-fill[data-points="2"] { background: var(--status-warning); }
+.bd-fill[data-points="3"] { background: var(--status-critical); }
+.bd-points { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
+.bd-row[data-points="0"] .bd-label,
+.bd-row[data-points="0"] .bd-points { color: var(--text-muted); }
+
+/* --------------------------------------------------------------- summary */
+
+.summary-list { margin: 0; padding-left: 18px; }
+.summary-list li { margin-bottom: 6px; }
+
+.provenance { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; font-size: 11px; }
+.prov-k { text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+
+.faith-ok   { color: var(--status-good); }
+.faith-bad  { color: var(--status-critical); font-weight: 650; }
+
+/* ---------------------------------------------------------------- charts */
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: var(--s4);
+}
+.chart-figure { margin: 0; }
+.chart-figure figcaption {
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.chart-figure .unit { font-weight: 400; color: var(--text-muted); }
+.chart-box { position: relative; height: 170px; }
+
+/* ----------------------------------------------------------------- table */
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td {
+  text-align: right; padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+th { color: var(--text-muted); font-weight: 600; }
+th:first-child, td:first-child { text-align: left; }
+tbody tr:hover { background: var(--surface-2); }
+
+/* ---------------------------------------------------------- system view */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--s3);
+}
+.stat {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--s3) var(--s4);
+}
+.stat .k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.stat .v { font-size: 24px; font-weight: 680; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.stat .d { font-size: 11px; color: var(--text-secondary); }
+
+.svc-row {
+  display: flex; align-items: center; gap: var(--s2);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.svc-row:last-child { border-bottom: 0; }
+.svc-row .spacer { margin-left: auto; }
+.svc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); flex: none; }
+.svc-dot[data-up="true"]  { background: var(--status-good); }
+.svc-dot[data-up="false"] { background: var(--status-critical); }
+
+.tier-list { display: grid; gap: var(--s2); }
+.tier {
+  display: flex; align-items: center; gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 12px;
+}
+.tier .spacer { margin-left: auto; }
+.tier[data-active="false"] { opacity: 0.55; }
+
+.back-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: 0; padding: 0;
+  color: var(--text-secondary); cursor: pointer; font-size: 12px;
+  margin-bottom: var(--s2);
+}
+.back-link:hover { color: var(--text-primary); }
+
+@media (max-width: 720px) {
+  .ward-grid { grid-template-columns: 1fr; }
+  .vtile .v { font-size: 25px; }
+}

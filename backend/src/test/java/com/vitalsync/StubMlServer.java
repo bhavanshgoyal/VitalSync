@@ -29,7 +29,10 @@ final class StubMlServer implements AutoCloseable {
               "risk": "%s",
               "probabilities": {"LOW": 0.10, "MEDIUM": 0.75, "HIGH": 0.15},
               "confidence": 0.75,
-              "news2": {"total": 5, "band": "MEDIUM", "max_single": 2},
+              "news2": {"total": 5, "band": "MEDIUM", "max_single": 2,
+                        "per_parameter": {"respiratory_rate": 2, "spo2": 1,
+                        "supplemental_oxygen": 0, "systolic_bp": 0, "pulse": 2,
+                        "consciousness": 0, "temperature": 0}},
               "derived": {"shock_index": 0.72, "pulse_pressure": 42.0, "map_mmhg": 92.0},
               "model_version": "stub-1.0.0",
               "inference_ms": 0.9

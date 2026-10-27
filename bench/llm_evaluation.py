@@ -54,6 +54,32 @@ ARTIFACTS = Path(__file__).resolve().parent.parent / "ml-service" / "artifacts"
 DETERMINISTIC_TIER = "rule-based"
 
 
+
+def _counter(base_url: str, token: str, metric: str, tier: str) -> float:
+    """One Micrometer counter value, or 0.0 if the tier never registered it."""
+    try:
+        _, body = request_json(
+            f"{base_url}/actuator/metrics/{metric}?tag=tier:{tier}", token=token)
+    except Exception:
+        return 0.0
+    for m in body.get("measurements", []):
+        if m.get("statistic") == "COUNT":
+            return float(m.get("value", 0.0))
+    return 0.0
+
+
+def cascade_counters(base_url: str, token: str, tiers: list) -> dict:
+    """attempt / rejected / failed per tier, as a point-in-time snapshot."""
+    return {
+        t: {
+            "attempt": _counter(base_url, token, "vitalsync.summary.attempt", t),
+            "rejected": _counter(base_url, token, "vitalsync.summary.rejected", t),
+            "failed": _counter(base_url, token, "vitalsync.summary.failed", t),
+        }
+        for t in tiers
+    }
+
+
 def make_case(rng: random.Random, patient_id: str, severity: float) -> dict:
     """One observation at a controlled severity, so all three bands are covered."""
     return {
@@ -128,6 +154,8 @@ def main(argv=None) -> int:
     severities = [i / max(args.cases - 1, 1) for i in range(args.cases)]
     records = []
 
+    counters_before = cascade_counters(args.base_url, token, active)
+
     print(f"[E9] submitting {args.cases} cases across the severity range ...")
     for i, sev in enumerate(severities):
         result = submit_and_collect(
@@ -146,6 +174,25 @@ def main(argv=None) -> int:
             "end_to_end_ms": result.get("_elapsed_ms"),
             "summary": result.get("summary"),
         })
+
+    counters_after = cascade_counters(args.base_url, token, active)
+    cascade = {}
+    for t in active:
+        b, a = counters_before[t], counters_after[t]
+        attempts = a["attempt"] - b["attempt"]
+        rejected = a["rejected"] - b["rejected"]
+        failed = a["failed"] - b["failed"]
+        cascade[t] = {
+            "attempts": int(attempts),
+            "rejected_unfaithful": int(rejected),
+            "failed_or_timeout": int(failed),
+            "answered": int(attempts - rejected - failed),
+            # Share of this tier's OWN attempts that survived the guard. Unlike
+            # faithfulness_rate this is computed over attempts, not over
+            # summaries the guard already approved, so it can be < 1.
+            "attempt_faithfulness_rate": (
+                (attempts - rejected) / attempts if attempts else None),
+        }
 
     by_provider: dict = {}
     for r in records:
@@ -186,6 +233,7 @@ def main(argv=None) -> int:
         "deterministic_only": not llm_tiers,
         "cases": len(records),
         "by_provider": summary_by_provider,
+        "cascade": cascade,
         "unfaithful_examples": [
             {k: r[k] for k in ("severity", "provider", "risk_band", "summary")}
             for r in records if r["faithful"] is False

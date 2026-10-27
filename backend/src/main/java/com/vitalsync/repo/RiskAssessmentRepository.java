@@ -29,6 +29,7 @@ public class RiskAssessmentRepository {
             (Double) rs.getObject("prob_high"),
             (Integer) rs.getObject("news2_total"),
             rs.getString("news2_band"),
+            rs.getString("news2_per_parameter"),
             rs.getString("model_version"),
             (Double) rs.getObject("ml_latency_ms"),
             rs.getBoolean("ml_available"),
@@ -44,17 +45,18 @@ public class RiskAssessmentRepository {
                 INSERT INTO risk_assessments (
                     patient_id, reading_id, risk_band, confidence,
                     prob_low, prob_medium, prob_high,
-                    news2_total, news2_band, model_version,
+                    news2_total, news2_band, news2_per_parameter, model_version,
                     ml_latency_ms, ml_available,
                     summary_text, summary_provider, summary_latency_ms,
                     summary_faithful, summary_faithfulness_problems)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?::jsonb,?,?,?,?,?,?,?,?)
                 RETURNING id
                 """)
                 .params(
                         a.patientId(), a.readingId(), a.riskBand(), a.confidence(),
                         a.probLow(), a.probMedium(), a.probHigh(),
-                        a.news2Total(), a.news2Band(), a.modelVersion(),
+                        a.news2Total(), a.news2Band(),
+                        a.news2PerParameterJson(), a.modelVersion(),
                         a.mlLatencyMs(), a.mlAvailable(),
                         a.summaryText(), a.summaryProvider(), a.summaryLatencyMs(),
                         a.summaryFaithful(), a.summaryFaithfulnessProblems())
@@ -123,6 +125,14 @@ public class RiskAssessmentRepository {
                 .list()
                 .stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    /** Assessments recorded while the triage service was unreachable. */
+    public long countDegraded() {
+        return jdbc.sql(
+                "SELECT COUNT(*) FROM risk_assessments WHERE ml_available IS FALSE")
+                .query(Long.class)
+                .single();
     }
 
     public long count() {

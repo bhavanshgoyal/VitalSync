@@ -34,9 +34,15 @@ public class SecurityConfig {
                                 "/actuator/info",
                                 "/",
                                 "/index.html",
-                                "/app.js",
-                                "/styles.css",
-                                "/favicon.ico")
+                                "/favicon.ico",
+                                // Static assets live under css/ and js/. These
+                                // must be anonymous: the login page itself
+                                // cannot render without them, and a 401 on a
+                                // stylesheet surfaces as an unstyled page with
+                                // a confusing MIME-type error rather than as
+                                // an auth problem.
+                                "/css/**",
+                                "/js/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 // Return 401 rather than a login redirect; this is an API.

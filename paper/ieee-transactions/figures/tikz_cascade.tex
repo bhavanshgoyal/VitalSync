@@ -1,0 +1,40 @@
+% Summarization cascade. The terminal tier is what makes the cascade total.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    node distance=5mm,
+    tier/.style  = {draw, rounded corners=2pt, minimum height=7mm,
+                    minimum width=32mm, align=center, line width=0.5pt},
+    llm/.style   = {tier, fill=blue!7,  draw=blue!55},
+    det/.style   = {tier, fill=green!8, draw=green!50!black},
+    gate/.style  = {draw, diamond, aspect=2.4, inner sep=0.4mm, fill=black!3,
+                    align=center, font=\scriptsize, line width=0.5pt},
+    arr/.style   = {-{Latex[length=1.8mm,width=1.4mm]}, line width=0.6pt},
+    note/.style  = {font=\scriptsize\itshape, text=black!55, align=left},
+    fail/.style  = {note, text=red!55!black},
+  ]
+
+  \node[tier, fill=black!3] (req) {summarization request};
+  \node[llm, below=of req]  (ollama) {tier 1: local model};
+  \node[gate, below=4mm of ollama] (g1) {faithful?};
+  \node[llm, below=4mm of g1] (gemini) {tier 2: cloud model};
+  \node[gate, below=4mm of gemini] (g2) {faithful?};
+  \node[det, below=4mm of g2] (rule) {tier 3: deterministic};
+  \node[tier, fill=black!3, below=6mm of rule] (out) {summary returned};
+
+  \draw[arr] (req)    -- (ollama);
+  \draw[arr] (ollama) -- (g1);
+  \draw[arr] (g1)     -- node[right, fail, xshift=1mm] {no, or tier failed} (gemini);
+  \draw[arr] (gemini) -- (g2);
+  \draw[arr] (g2)     -- node[right, fail, xshift=1mm] {no, or tier failed} (rule);
+  \draw[arr] (rule)   -- (out);
+
+  % Success paths bypass the remaining tiers.
+  \draw[arr] (g1.west) -- ++(-9mm,0) node[above, note, xshift=2mm] {yes}
+             |- (out.west);
+  \draw[arr] (g2.west) -- ++(-5mm,0) node[above, note, xshift=2mm] {yes}
+             |- (out.west);
+
+  \node[note, right=4mm of rule, text width=24mm, text=green!35!black]
+       {no network dependency; cannot fail};
+
+\end{tikzpicture}

@@ -1,0 +1,37 @@
+% Degraded-mode state machine. Ingestion is available in every state; only the
+% content of the assessment changes.
+%
+% Stacked vertically on purpose: two states side by side exceed a single
+% journal column and push ~22mm into the margin.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    st/.style   = {draw, rounded corners=3pt, minimum height=10mm,
+                   minimum width=54mm, align=center, line width=0.6pt,
+                   font=\scriptsize},
+    ok/.style   = {st, fill=green!8,  draw=green!50!black},
+    deg/.style  = {st, fill=orange!10, draw=orange!70!black},
+    arr/.style  = {-{Latex[length=1.8mm,width=1.4mm]}, line width=0.6pt},
+    lbl/.style  = {font=\scriptsize\itshape, text=black!55, align=left},
+  ]
+
+  \node[ok] (normal)
+       {\textbf{NORMAL}\\ band from model, breakdown present\\
+        \texttt{ml\_available = true}};
+
+  \node[deg, below=14mm of normal] (degraded)
+       {\textbf{DEGRADED}\\ band = UNAVAILABLE, breakdown absent\\
+        \texttt{ml\_available = false}};
+
+  \draw[arr] ([xshift=-12mm]normal.south) -- ([xshift=-12mm]degraded.north)
+        node[midway, left, lbl, xshift=-0.5mm]
+        {triage call fails\\or times out};
+  \draw[arr] ([xshift=12mm]degraded.north) -- ([xshift=12mm]normal.south)
+        node[midway, right, lbl, xshift=0.5mm]
+        {next call\\succeeds};
+
+  \node[lbl, below=3mm of degraded, text width=56mm, align=center]
+       {In both states the reading is persisted, 202 is returned, and a summary
+        is produced. Only the band and the breakdown differ, and recovery needs
+        no restart.};
+
+\end{tikzpicture}

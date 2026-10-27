@@ -1,0 +1,1396 @@
+%% VitalSync -- IEEE Transactions (journal) manuscript, full length.
+%%
+%% Format follows the IEEE Transactions template bundle supplied for this
+%% submission: IEEEtran.cls v1.8b (2015/08/26), lettersize + journal options,
+%% as described in New_IEEEtran_how-to.pdf.
+%%
+%% Build (from this directory):
+%%   pdflatex vitalsync_transactions
+%%   pdflatex vitalsync_transactions
+%%   pdflatex vitalsync_transactions
+%%
+%% Tables and figures are generated from the experiment artifacts in
+%% ml-service/artifacts/ by paper/make_tables.py, paper/make_figures.py and
+%% paper/make_figures_extra.py. No reported number is typed by hand.
+
+\documentclass[lettersize,journal]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{stfloats}
+\usepackage{multirow}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc, fit,
+                backgrounds}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\hyphenation{op-tical net-works semi-conduc-tor tele-metry
+             summa-ri-za-tion faith-ful-ness de-ter-io-ra-tion}
+
+\begin{document}
+
+\title{VitalSync: A Decoupled IoMT Architecture for Risk Triage and
+Resilient, Faithfulness-Verified Clinical Summarization}
+
+\author{Bhavansh~Goyal%
+\thanks{Manuscript prepared October~2026. \emph{(Corresponding author:
+Bhavansh Goyal.)}}%
+\thanks{B. Goyal is with the Department of [Department], [Institution],
+[City], [Country] (e-mail: [e-mail address]).}%
+\thanks{This work describes a research prototype. The system is not a medical
+device and has not been evaluated for clinical use. All cohorts are simulated;
+no patient data was used at any stage.}}
+
+\markboth{IEEE Transactions on [Journal Name],~Vol.~XX, No.~X, Month~2026}%
+{Goyal: VitalSync: A Decoupled IoMT Architecture for Risk Triage and Resilient Clinical Summarization}
+
+\maketitle
+
+\begin{abstract}
+Continuous monitoring in the Internet of Medical Things produces physiological
+telemetry far faster than clinicians can read it. Generative summarization
+promises relief, but it introduces a component that is slow, intermittently
+unavailable, and capable of stating things the data does not contain. Placing
+such a component in the ingestion path means inheriting its worst case. We
+present VitalSync, an architecture that separates three concerns prior systems
+couple: telemetry ingestion, deterministic risk triage, and generative
+summarization. We make four contributions. First, we audit a widely downloaded
+public vital-signs dataset and recover its label-generating rule exactly: a
+three-clause Boolean over heart rate and body mass index reproduces all 200{,}020
+published labels without a single mismatch. Classifiers reach the ceiling by
+recovering that Boolean, and an ablation restricted to the remaining vital signs
+performs below the majority-class baseline, so reported accuracies on this
+dataset are artifacts of label construction. Second, we separate latent
+physiology from sensor observation and show that a learned triage model recovers
+the clean-signal NEWS2 escalation band more reliably than the NEWS2 rule applied
+to the same corrupted readings, with the advantage growing monotonically in
+sensor noise and reversing at zero noise, where the rule is exact by
+construction. That reversal is the negative control that makes the rest
+credible. Third, we show that macro-F1 selects a model reporting high-risk
+observations as low risk 5.9 times more often than a cost-aware criterion, and
+we report the disagreement rather than resolving it after the fact. Fourth, we
+specify a summarization cascade in which a mechanical numeric-entailment check
+governs fallback, terminating in a deterministic generator that cannot fail. The
+implementation sustains 100 requests per second at 27--31\,ms p95 ingestion
+latency, returns in under one second while the triage service is stalled for
+three, and continues to ingest and summarize with that service stopped
+altogether. All results are software engineering evaluation on simulated
+cohorts; no clinical claim is made.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Internet of Medical Things, remote patient monitoring, early warning score,
+clinical decision support, large language models, hallucination detection,
+dataset auditing, fault tolerance, system resilience, model calibration.
+\end{IEEEkeywords}
+
+%% ======================================================================
+\section{Introduction}
+
+\IEEEPARstart{R}{emote} patient monitoring generates continuous streams of
+vital-sign telemetry. The limiting factor is not acquisition. It is attention. A
+ward producing thousands of readings an hour presents clinicians with far more
+data than anyone can review, and the conventional response---one alarm per
+parameter per threshold breach---scales with the product of patients,
+parameters, and sampling rate. Studies of physiologic monitors in intensive care
+have counted more than two and a half million alarms in a single month on one
+unit \cite{drew2014}, with the large majority non-actionable
+\cite{sendelbach2013}. The result is desensitization, and desensitization has
+been linked to patient deaths.
+
+Large language models look like an attractive remedy. They turn columns of
+numbers into prose a clinician can read in seconds, and recent work reports that
+adapted models can match or exceed medical experts on several clinical
+summarization tasks \cite{vanveen2024}. But they also carry properties a
+monitoring system should not inherit. Latency is measured in seconds rather than
+milliseconds. Availability depends on a remote service that may be rate-limited
+or down. And the models can produce fluent text asserting values that never
+appeared in the input---a failure mode documented across summarization
+generally \cite{maynez2020, kryscinski2020} and surveyed at length for natural
+language generation as a whole \cite{ji2023}. A system that puts such a
+component in the path of telemetry ingestion inherits all three.
+
+VitalSync separates these concerns. Ingestion terminates at a durable write.
+Risk triage is a deterministic, millisecond-scale operation that runs
+independently. Generative summarization sits behind a cascade whose final tier
+is a template generator with no external dependency. The architectural claim is
+availability: no single language model is required for the system to function,
+and no unverified number reaches a reader from a non-final tier.
+
+There is a second thread to this paper, and it was not planned. The project was
+specified around a public dataset. Before training we audited the label, which
+is cheap and rarely done. What we found reframed the work: the label is a
+three-clause rule over two variables, the dataset contains no abnormal reading
+at all, and the high accuracies reported on it measure Boolean recovery rather
+than clinical prediction. We report that as a primary contribution rather than
+working around it, because the dataset is public, widely downloaded, and the
+defect is invisible to the standard train-and-report workflow.
+
+\subsection{Contributions}
+
+\begin{enumerate}
+  \item A label-provenance audit of a public vital-signs dataset that recovers
+        its exact generating rule and demonstrates, by ablation, that the vital
+        signs it distributes carry no information about its published label
+        (Section~\ref{sec:tracka}).
+  \item An experimental design that separates latent physiology from sensor
+        observation, turning ``learned model versus threshold rule'' into a
+        falsifiable comparison, together with the zero-noise negative control
+        that validates it (Section~\ref{sec:trackb}).
+  \item Evidence that aggregate classification metrics select triage models that
+        are materially worse under clinically asymmetric cost, quantified on
+        both a standard cohort and a reduced sensor-only deployment
+        (Sections~\ref{sec:trackb} and \ref{sec:eval}).
+  \item A summarization cascade in which mechanical numeric entailment governs
+        fallback, with a deterministic terminal tier that guarantees a response
+        (Section~\ref{sec:faith}), and an implementation whose decoupling,
+        throughput, and degraded-mode behaviour are measured rather than
+        asserted (Section~\ref{sec:eval}).
+\end{enumerate}
+
+%% ======================================================================
+\section{Related Work and Background}
+\label{sec:related}
+
+\subsection{Early warning scores}
+
+Aggregate early warning scores condense several vital signs into a single number
+with defined escalation bands. The Modified Early Warning Score
+\cite{subbe2001} established the pattern; the National Early Warning Score,
+standardized by the Royal College of Physicians and revised as NEWS2
+\cite{rcp2017}, is now mandated across the NHS. Its discrimination has been
+measured on large observational cohorts: against the combined outcome of cardiac
+arrest, unanticipated ICU admission, or death within 24 hours, NEWS achieved an
+area under the receiver operating characteristic curve of 0.873, outperforming
+33 competing scores \cite{smith2013}.
+
+Scores of this kind have two properties that matter here. They are
+deterministic, so a clinician can recompute one by hand from the chart. And they
+are additive over parameters, so the total decomposes into contributions that
+explain it. A systematic review of 95 early warning score papers found that
+every included study was at high risk of bias and that many scores in daily
+clinical use have real methodological weaknesses \cite{gerry2020}, which is a
+caution against treating any such score as ground truth rather than as a
+documented, auditable convention. We use NEWS2 in exactly that second sense.
+
+\subsection{Machine learning for clinical deterioration}
+
+A large literature replaces or augments these scores with learned models.
+Churpek \emph{et al.} compared machine learning methods against conventional
+regression for ward deterioration across multiple centres \cite{churpek2016}.
+Deep models have been applied to continuous prediction of acute kidney injury at
+national scale \cite{tomasev2019} and to early prediction of circulatory failure
+in intensive care \cite{hyland2020}; sepsis prediction in the ICU has its own
+systematic review \cite{moor2021}. Deployed at scale, automated deterioration
+identification coupled to rapid-response workflows has been associated with
+reduced mortality \cite{escobar2020}. The broader promise and the broader
+caution are both well surveyed \cite{topol2019}.
+
+The caution matters. External validation of a widely deployed proprietary sepsis
+model found poor discrimination and calibration, with many onsets missed
+\cite{wong2021}. Dataset shift between development and deployment is a
+recognised clinical hazard rather than a theoretical one \cite{finlayson2021},
+and the assumption that a model validated in one setting transfers to another
+has been argued to be a myth \cite{futoma2020}. None of these failures is
+visible from an aggregate accuracy figure on a held-out split.
+
+\subsection{Alarm burden}
+
+Alarm fatigue is the operational problem a triage layer is meant to address.
+Observational work in intensive care documents both the raw volume and the low
+actionable fraction \cite{drew2014}, and the patient-safety framing is
+established \cite{sendelbach2013}. We are careful in this paper to distinguish
+counting notification events, which we do, from measuring clinician workload or
+fatigue, which we do not.
+
+\subsection{Language models over clinical text}
+
+Clinical summarization with language models is an active area, with reported
+results that are genuinely strong under expert review \cite{vanveen2024}.
+Faithfulness is the open problem. Large-scale human evaluation of abstractive
+summarization systems found models highly prone to hallucinating content
+unfaithful to the input \cite{maynez2020}, and entailment-based measures
+correlate with faithfulness better than standard overlap metrics
+\cite{kryscinski2020}. The general survey of hallucination in natural language
+generation catalogues both the taxonomy and the mitigations \cite{ji2023}.
+Retrieval augmentation reduces but does not eliminate the problem
+\cite{lewis2020}.
+
+Our contribution here is narrow and deliberately so. We do not attempt to make a
+model faithful. We check its output mechanically against the numbers it was
+given, and we use the result of that check to decide which tier answers.
+
+\subsection{Machine learning systems engineering}
+
+The engineering literature on deploying machine learning is directly relevant to
+an architecture paper. Hidden technical debt in machine learning systems
+\cite{sculley2015} and a survey of deployment case studies \cite{paleyes2022}
+both identify the glue around the model---serving, monitoring, data
+dependencies---as the dominant source of risk. Tail latency behaviour in
+distributed services \cite{dean2013} motivates the bounded-executor and
+timeout design we adopt: a component that is occasionally slow degrades a
+coupled system far more than its average latency suggests.
+
+\subsection{Dataset quality, leakage, and interoperability}
+
+Leakage is a widespread failure mode in machine-learning-based science,
+affecting hundreds of papers across seventeen disciplines, with a taxonomy of
+eight distinct types \cite{kapoor2023}. In medical imaging specifically, a
+review of COVID-19 models found none fit for clinical use, with dataset problems
+prominent among the causes \cite{roberts2021}. Public critical care datasets such
+as MIMIC-III \cite{johnson2016} have raised the standard for provenance by
+documenting their construction. The dataset we audit in
+Section~\ref{sec:tracka} does not meet that standard, and the audit is in the
+same spirit as this body of work. For data exchange we follow HL7 FHIR, whose
+RESTful resource model \cite{bender2013} shapes the observation contract used
+throughout.
+
+%% ======================================================================
+\section{Problem Formulation and Requirements}
+\label{sec:problem}
+
+\subsection{System model}
+
+Let a telemetry source emit observations indexed by time. Each observation is a
+vector
+\begin{equation}
+x = (x_{\mathrm{hr}}, x_{\mathrm{spo2}}, x_{\mathrm{temp}},
+     x_{\mathrm{rr}}, x_{\mathrm{sbp}}, x_{\mathrm{dbp}})
+\end{equation}
+of six sensed channels, optionally extended with glucose and with two
+staff-recorded context flags: supplemental oxygen $o \in \{0,1\}$ and
+consciousness $a \in \{0,1\}$ on the AVPU scale. Derived quantities are computed
+on write:
+\begin{align}
+\mathrm{SI}  &= x_{\mathrm{hr}} / x_{\mathrm{sbp}}, \quad x_{\mathrm{sbp}} > 0 \\
+\mathrm{PP}  &= x_{\mathrm{sbp}} - x_{\mathrm{dbp}} \\
+\mathrm{MAP} &= (x_{\mathrm{sbp}} + 2 x_{\mathrm{dbp}}) / 3 .
+\end{align}
+
+A triage function $f$ maps an observation to an escalation band
+$\hat{y} \in \mathcal{B} = \{\textsc{low}, \textsc{medium}, \textsc{high}\}$
+with a probability vector $p \in \Delta^{2}$. A summarization function $g$ maps
+an observation, a bounded trend window, and the triage output to a short text.
+
+\subsection{Failure model}
+
+We assume the following may occur independently and at any time, and the system
+must remain useful under each.
+
+\begin{itemize}
+  \item \textbf{F1, triage unavailable.} The service implementing $f$ is
+        unreachable, returns an error, or exceeds its timeout.
+  \item \textbf{F2, generator unavailable.} A tier implementing $g$ is
+        unreachable, rate-limited, or exceeds its timeout.
+  \item \textbf{F3, generator unfaithful.} A tier returns well-formed text that
+        asserts a value absent from its inputs, or names a condition.
+  \item \textbf{F4, overload.} Offered telemetry exceeds the rate at which
+        analysis can complete.
+  \item \textbf{F5, incomplete observation.} One or more channels are missing,
+        or the staff-recorded flags are unavailable because the feed is
+        sensor-only.
+\end{itemize}
+
+F3 is the failure that motivates most of this paper, because unlike the others
+it is silent. A tier that is down announces itself. A tier that invents a
+plausible lactate value does not.
+
+\subsection{Requirements}
+
+\begin{enumerate}
+  \item[R1] \textbf{Ingestion independence.} Acknowledgement latency must not
+        depend on the latency of $f$ or $g$.
+  \item[R2] \textbf{Bounded resource use.} Under F4 the system must apply
+        backpressure rather than accumulate unbounded work.
+  \item[R3] \textbf{Honest degradation.} Under F1 the band must be reported as
+        unavailable, never inferred.
+  \item[R4] \textbf{Total summarization.} Under F2 and F3 a summary must still
+        be produced.
+  \item[R5] \textbf{Grounded output.} No text from a non-final tier may assert a
+        value absent from its inputs.
+  \item[R6] \textbf{Auditability.} Every assessment must record which tier
+        answered, whether triage was reachable, and whether verification passed.
+\end{enumerate}
+
+Section~\ref{sec:eval} evaluates each of these against the implementation.
+
+%% ======================================================================
+\section{Track A: Auditing the Dataset}
+\label{sec:tracka}
+
+\subsection{Motivation}
+
+The project was specified around a public Kaggle dataset of human vital
+signs~\cite{dataset} (200{,}020 rows, 17 columns) carrying a
+\texttt{Risk Category} label, to be classified with random forest and gradient
+boosting. Before training we audited the label. This is cheap, and given the
+documented prevalence of leakage \cite{kapoor2023} and dataset-driven failure
+\cite{roberts2021}, it should be routine.
+
+\subsection{Method}
+
+We computed per-class descriptive statistics for every numeric column, ranked
+features by mutual information with the label, fitted a depth-3 decision tree and
+exported its rule, tested a candidate Boolean against all rows, reproduced the
+specified random forest and gradient boosting experiment, and ran an ablation
+restricted to the vital signs that showed no class separation.
+
+\subsection{Result: the label is a rule}
+
+The published label is reproduced exactly, with zero mismatches across all
+200{,}020 rows, by
+\begin{equation}
+\mathrm{High} \iff (\mathrm{HR} > 90) \lor (\mathrm{BMI} > 30) \lor
+(\mathrm{BMI} < 18.5).
+\label{eq:rule}
+\end{equation}
+
+Three consequences follow, in increasing order of damage.
+
+The dataset is binary. There is no \textsc{normal} class, so the three-class
+target originally specified cannot be trained from it at all.
+
+Every vital sign lies inside its normal reference range: heart rate 60--99,
+oxygen saturation 95.0--100.0, systolic pressure 110--139, temperature
+36.0--37.5, respiratory rate 12--19. The cohort contains no physiologically
+abnormal observation. It is a dataset of healthy people with a label attached.
+
+Class-conditional means for oxygen saturation, both blood pressures,
+temperature, respiratory rate, and mean arterial pressure agree to three decimal
+places. Those variables carry no label information whatsoever.
+
+Table~\ref{tab:audit} and Fig.~\ref{fig:audit} report the classification results
+alongside the rule and the ablation. Both ensembles reach the ceiling. The
+ablation, trained only on oxygen saturation, blood pressure, temperature, and
+respiratory rate, does not beat the majority-class baseline.
+
+\input{tables/table_audit}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_audit.pdf}
+\caption{Track A. Both ensembles reach the ceiling by recovering the label rule.
+The ablation trained only on oxygen saturation, blood pressure, temperature and
+respiratory rate falls \emph{below} the majority-class baseline: those channels
+carry no information about the published label.}
+\label{fig:audit}
+\end{figure}
+
+\subsection{Implication}
+
+A classification score on this dataset measures recovery of
+Equation~\ref{eq:rule}. It is not evidence of clinical predictive capability. A
+reviewer fitting a shallow tree finds this in seconds, which makes publishing
+such a score a reputational risk as much as a scientific one. We therefore do
+not use this dataset to train the deployed model, and we recommend that any
+classification result on a public physiological dataset be accompanied by
+evidence that the label is not a deterministic function of the features.
+
+%% ======================================================================
+\section{Track B: Triage Under Sensor Noise}
+\label{sec:trackb}
+
+\subsection{The circularity problem}
+
+Substituting NEWS2 for the dataset's label does not by itself solve anything.
+NEWS2 is also a deterministic function of vital signs, so a model trained to
+reproduce NEWS2 from clean vitals is learning a rule that is already known, and
+any reported accuracy is a statement about function approximation rather than
+about clinical utility. Swapping one rule for another changes which tautology is
+being measured, not whether one is.
+
+\subsection{Design: latent truth versus observation}
+
+We break the circularity by distinguishing what is true from what is measured:
+\[
+x^{*} \xrightarrow{\ \mathrm{NEWS2}\ } y^{*}, \qquad
+x^{*} \xrightarrow{\ \text{sensor noise}\ } \hat{x},
+\]
+where $x^{*}$ is latent physiology, $y^{*}$ the ground-truth escalation band,
+and $\hat{x}$ the corrupted telemetry. Ground truth is scored on $x^{*}$. Every
+method---including the rule baseline---observes only $\hat{x}$. The rule
+baseline computes NEWS2 on $\hat{x}$, which is precisely what a conventional
+threshold monitor does in practice. The learned model is trained on
+$(\hat{x}, y^{*})$ and can therefore internalize the noise distribution, soften
+band boundaries, and exploit cross-parameter redundancy that a per-parameter
+rule cannot.
+
+This yields a falsifiable comparison with a built-in negative control: at zero
+noise $\hat{x} = x^{*}$, the rule is exact by construction, and the learned
+model \emph{must not} beat it. Fig.~\ref{fig:design} shows the arrangement.
+
+\begin{figure}[t]
+\centering
+\input{figures/tikz_design}
+\caption{Separating latent physiology from sensor observation. Ground truth is
+scored on the latent signal; every method, including the rule baseline, observes
+only the corrupted telemetry; the dashed edges indicate that both are scored
+against the same latent-signal truth. This is what makes ``learned model versus
+threshold rule'' a real comparison rather than a restatement of the labelling
+function.}
+\label{fig:design}
+\end{figure}
+
+\subsection{Cohort and corruption model}
+
+Latent severity $z \in [0,1]$ is drawn from a three-component mixture: 60\%
+stable, 25\% mild derangement, 15\% acute deterioration, with Beta shapes
+keeping each component inside its own region. Four deterioration archetypes
+(respiratory, circulatory, febrile, mixed) weight the channels differently, so
+that deterioration appears across several parameters at once rather than in one
+channel independently. This matters: a generator with independent marginals
+would make the aggregate score trivially redundant and would flatter any method
+that exploits aggregation.
+
+Corruption is applied per channel: Gaussian noise on all channels, motion
+artifact on heart rate at 1.5\% of readings, perfusion dropout on oxygen
+saturation at 2\%, display quantization, and 3\% whole-channel dropout imputed at
+inference. Quantization is treated as part of the corruption and is disabled at
+zero noise, so that the zero-noise condition is an exact identity and can serve
+as a test of the generator and scorer themselves. Appendix~\ref{app:noise} gives
+the parameters.
+
+\subsection{Metrics}
+
+All estimators are implemented with scikit-learn~\cite{pedregosa2011}. The
+random forest \cite{breiman2001} and gradient boosting \cite{friedman2001}
+configurations follow the original project specification; related gradient
+boosting implementations are surveyed in \cite{chen2016}.
+
+Macro-F1 is the pre-registered selection criterion. It is insufficient alone: it
+scores a missed high-risk observation identically to a spurious one. We
+therefore also report high-risk recall, \emph{missed-HIGH} (the fraction of
+high-risk observations reported as low risk), and a mean cost under an
+asymmetric matrix penalizing under-triage far more heavily than over-triage,
+following the cost-sensitive learning framework of Elkan \cite{elkan2001}. Those
+weights are a stated assumption, not derived from outcome data;
+Fig.~\ref{fig:cost} shows the matrix and Appendix~\ref{app:cost} states it
+explicitly.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_cost_matrix.pdf}
+\caption{The asymmetric cost matrix. Rows are the true band, columns the
+predicted band. The lower-left cell, a high-risk observation reported as low
+risk, carries 25 times the cost of a one-band over-triage. These weights encode
+a clinical intuition and are not derived from outcome data.}
+\label{fig:cost}
+\end{figure}
+
+Calibration is assessed by expected calibration error over ten equal-width bins
+and by the multiclass Brier score, following standard practice
+\cite{guo2017, niculescu2005}. A confidence value displayed to a clinician that
+does not mean what it says is worse than displaying none.
+
+\subsection{Results}
+
+Table~\ref{tab:trackb} reports all five methods on the same corrupted
+observations. Table~\ref{tab:noise} and Fig.~\ref{fig:noise} sweep the noise
+scale, averaging three independent cohort seeds per cell and reporting a 95\%
+confidence interval on the model-minus-rule difference.
+
+\input{tables/table_trackb}
+\input{tables/table_noise}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_noise_sweep.pdf}
+\caption{Macro-F1 against sensor-noise scale (top) and the model-minus-rule
+difference with 95\% confidence intervals over three cohort seeds (bottom).
+Shaded bands are 95\% intervals. The difference changes sign: at $\sigma=0$ the
+rule is exact and the learned model is significantly worse, and the advantage
+appears only once observations are corrupted.}
+\label{fig:noise}
+\end{figure}
+
+The negative control holds. At $\sigma = 0$ the rule is exact and the learned
+model is significantly worse, by $-0.0341$ with a 95\% interval of
+$[-0.0381, -0.0300]$. The advantage appears once observations are corrupted and
+grows monotonically with noise, every interval excluding zero. This is the
+paper's central empirical claim, and its credibility rests on the fact that the
+design permits it to fail.
+
+Fig.~\ref{fig:confusion} shows where the two methods differ in kind rather than
+degree, and Fig.~\ref{fig:perclass} breaks performance down by band. The
+\textsc{medium} band is where the aggregate figures conceal the most: it is the
+minority class and the boundary case, and every method does worst there.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_confusion.pdf}
+\caption{Row-normalised confusion matrices for the rule baseline and the
+selected model, with raw counts in parentheses. Row normalisation is necessary
+because the bands are strongly unbalanced; raw counts would show little beyond a
+bright \textsc{low} cell.}
+\label{fig:confusion}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_per_class.pdf}
+\caption{Per-band F1. The \textsc{medium} band is the hardest for every method,
+which the macro average partially conceals.}
+\label{fig:perclass}
+\end{figure}
+
+\subsection{Selection criteria disagree}
+
+Macro-F1 and the cost criterion select different models. The F1-optimal model
+attains higher aggregate scores while reporting high-risk observations as low
+risk 5.9 times more often than the cost-optimal alternative, for a macro-F1
+difference of less than $0.006$. Fig.~\ref{fig:missedhigh} shows that the gap
+persists across the whole noise sweep rather than being an artifact of one
+operating point.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_missed_high.pdf}
+\caption{Missed-HIGH rate across the noise sweep: the fraction of genuinely
+high-risk observations reported as low risk. This is the error the aggregate
+metrics hide, and it is the one a triage system exists to prevent.}
+\label{fig:missedhigh}
+\end{figure}
+
+We report the disagreement and retain the pre-registered criterion. Changing it
+after observing results would be precisely the post-hoc selection that makes a
+reported number untrustworthy, and the project's own audit of someone else's
+dataset would sit badly beside it.
+
+\subsection{Calibration}
+
+The system displays a confidence value, so whether that value means anything is
+part of the result rather than an implementation detail.
+Table~\ref{tab:calibration} and Fig.~\ref{fig:calibration} give the reliability
+table and diagram. We expected over-confidence, since tree ensembles are known
+to produce voting fractions that read like probabilities without being
+calibrated \cite{niculescu2005}. We did not find much: expected calibration
+error is 0.0053 and mean confidence exceeds observed accuracy by 0.0014. The
+point is not that the suspicion was wrong. It is that the system previously
+displayed a number nobody had checked.
+
+\input{tables/table_calibration}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_calibration.pdf}
+\caption{Reliability diagram for the selected triage model, with bin support
+below. Points on the diagonal indicate that a stated confidence matches observed
+accuracy. Support is shown because a large gap in a sparsely populated bin is a
+weaker finding than the same gap in a well populated one.}
+\label{fig:calibration}
+\end{figure}
+
+\subsection{Sensor-only deployment}
+
+Two NEWS2 parameters, supplemental oxygen and consciousness, are recorded by
+staff rather than sensed. A deployment fed only by wearables cannot supply them,
+and the interface defaults them to the benign case. This is failure mode F5, and
+it is silent in the same way F3 is: nothing errors, the numbers simply get
+worse.
+
+Table~\ref{tab:wearable} and Fig.~\ref{fig:wearable} quantify it. Serving the
+fully-trained model on a sensor-only feed raises the missed-HIGH rate more than
+three-fold. Retraining for the inputs actually present recovers most of the
+safety margin while barely changing macro-F1---another instance of the aggregate
+metric concealing the clinically relevant difference.
+
+\input{tables/table_wearable}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_wearable.pdf}
+\caption{Sensor-only deployment. Serving the fully-trained model against a feed
+lacking supplemental-oxygen and consciousness observations (S2) raises the rate
+of high-risk observations reported as low risk more than three-fold. Retraining
+for the inputs actually present (S3) recovers most of the safety margin while
+barely changing macro-F1.}
+\label{fig:wearable}
+\end{figure}
+
+%% ======================================================================
+\section{System Architecture}
+\label{sec:arch}
+
+\subsection{Overview}
+
+Four components: a Python triage service exposing a stateless inference API; a
+Java backend owning authentication, validation, persistence, orchestration and
+the summarization cascade; PostgreSQL for durable telemetry and assessments; and
+a browser dashboard. Fig.~\ref{fig:arch} shows the arrangement and, more
+importantly, the boundary between what must be fast and what is permitted to be
+slow.
+
+\begin{figure*}[t]
+\centering
+\input{figures/tikz_architecture}
+\caption{Architecture and the synchronous/asynchronous boundary. Ingestion
+performs one durable write and returns \texttt{202 Accepted}; triage and
+summarization proceed on a bounded executor behind it. Ingestion throughput is
+therefore bounded by the database, never by whichever language model is
+currently answering.}
+\label{fig:arch}
+\end{figure*}
+
+\subsection{The decoupling rule}
+
+Telemetry ingestion performs validation and one durable write, then returns
+\texttt{202 Accepted}. The status code is deliberate. Returning \texttt{200}
+would imply the analysis was complete, which under load it is not.
+
+Analysis is handed to a bounded executor with a caller-runs rejection policy.
+The bound matters more than it first appears. An unbounded queue would let a
+telemetry burst accumulate an ever-growing backlog of pending model calls and
+eventually exhaust heap, converting a load spike into an outage. With a bounded
+queue and caller-runs, sustained overload instead pushes back on the ingestion
+thread: ingestion slows, nothing is dropped, and nothing grows without limit.
+This is requirement R2, and it follows the tail-latency reasoning of
+\cite{dean2013}---an occasionally slow dependency damages a coupled system far
+more than its mean latency suggests.
+
+Fig.~\ref{fig:sequence} shows the timing for a single reading, with the point of
+acknowledgement marked.
+
+\begin{figure*}[t]
+\centering
+% Scaled to the text block: the lifelines plus the boundary annotation exceed
+% the page width at natural size.
+\resizebox{\textwidth}{!}{\input{figures/tikz_sequence}}
+\caption{Timing for one reading. The client is released after the durable write
+and before any model is consulted, which is what makes acknowledgement latency
+independent of triage and summarization latency (requirement R1).}
+\label{fig:sequence}
+\end{figure*}
+
+\subsection{Degraded operation}
+
+When the triage service is unreachable or exceeds its timeout, the assessment is
+recorded with the band marked unavailable, the breakdown absent, and a flag
+indicating the model did not contribute. It is not inferred, not carried forward
+from a previous reading, and not defaulted to \textsc{low}. The summary is still
+produced, from the numbers, by the deterministic tier.
+Fig.~\ref{fig:states} shows the two states and what they share.
+
+\begin{figure}[t]
+\centering
+\input{figures/tikz_states}
+\caption{Degraded-mode state machine. Ingestion, persistence and summarization
+are available in both states; only the risk band and the score breakdown
+differ. Recovery requires no restart.}
+\label{fig:states}
+\end{figure}
+
+\subsection{Persistence and provenance}
+
+Fig.~\ref{fig:schema} gives the schema. Derived features are persisted rather
+than recomputed on read, so the dashboard and the benchmarks cannot drift from
+the definitions used at write time. More importantly, four provenance columns
+are stored with every assessment: which tier answered, its latency, whether
+triage was reachable, and whether verification passed. This is requirement R6,
+and it is what allows the resilience claims in Section~\ref{sec:eval} to be
+measured from stored data rather than scraped from logs.
+
+\begin{figure*}[t]
+\centering
+% Scaled to the text block: three side-by-side entity boxes exceed the page
+% width at their natural size.
+\resizebox{\textwidth}{!}{\input{figures/tikz_schema}}
+\caption{Persistence schema. Provenance columns, shown in bold, record which
+summarization tier answered, whether the triage service was reachable, and
+whether the generated text passed verification.}
+\label{fig:schema}
+\end{figure*}
+
+%% ======================================================================
+\section{Faithfulness-Verified Summarization}
+\label{sec:faith}
+
+\subsection{Why prompting is not enough}
+
+The prompt instructs the model not to invent findings. Prompts are not
+enforcement. The summarization literature is unambiguous that instruction
+following does not prevent hallucination \cite{maynez2020, ji2023}, and in a
+clinical context the specific failure that matters is a fabricated number,
+because a number looks checkable and therefore invites trust.
+
+\subsection{Definition}
+
+Let $R$ be a summarization request carrying the latest reading, the derived
+features, the NEWS2 result, and trend deltas over a bounded window. Define the
+\emph{supported set} $\mathcal{A}(R)$ as the union of all values the request
+legitimately contains, together with their rounded forms at integer, one-decimal
+and two-decimal precision, and the reference-range constants the deterministic
+tier itself quotes.
+
+A candidate summary $T$ is \emph{faithful} with respect to $R$ when
+\begin{equation}
+\forall v \in \mathrm{num}(T) \;\; \exists\, \alpha \in \mathcal{A}(R)
+: \; |v - \alpha| \le \tau
+\label{eq:faith}
+\end{equation}
+and $T$ contains no term from a list of condition names, where $\mathrm{num}(T)$
+extracts numeric literals from $T$ after removing measurement names that end in
+a digit, and $\tau$ is an absolute tolerance.
+
+\subsection{Choosing the tolerance}
+
+The tolerance is the whole design. Set it loose and the check is decorative; set
+it tight and legitimate rounding is rejected.
+
+Our first implementation used $\tau = 1.0$, which seemed conservative. It was
+not. A test summary inventing ``lactate 4.7 mmol/L'' passed, because the
+patient's NEWS2 total was 5 and $|4.7 - 5| = 0.3 < \tau$. A fabricated clinical
+value had matched an unrelated score. The lesson generalises: a tolerance tuned
+against large values is a hole at small ones. One unit on a heart rate of 118 is
+0.8\%; on a score of 5 it is 20\%.
+
+The fix was to enumerate the legitimate rounded forms explicitly in
+$\mathcal{A}(R)$ and then reduce $\tau$ to $0.05$, which now absorbs only
+floating-point representation error. That case is retained as a regression test.
+
+\subsection{Cascade}
+
+Algorithm~\ref{alg:cascade} gives the procedure, and Fig.~\ref{fig:cascade}
+the flow. Two properties follow directly. Failing verification is treated as a
+tier failure rather than as a result, so a fabricating tier is skipped rather
+than surfaced (R5). And the terminal tier has no external dependency and is
+verified in test to satisfy Equation~\ref{eq:faith} by construction, so the loop
+always terminates with a summary (R4).
+
+\begin{algorithm}[t]
+\caption{Verification-gated summarization cascade}
+\label{alg:cascade}
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} request $R$; ordered tiers $g_1, \dots, g_n$ with $g_n$
+       deterministic
+\STATE \textbf{Output:} summary $T$, tier identifier, verification result
+\FOR{$i = 1$ \TO $n$}
+  \IF{$g_i$ is not configured or not reachable}
+    \STATE \textbf{continue}
+  \ENDIF
+  \STATE $T \leftarrow g_i(R)$ \hfill \COMMENT{never throws; may return $\emptyset$}
+  \IF{$T = \emptyset$ \OR $T$ has fewer than three bullets}
+    \STATE \textbf{continue} \hfill \COMMENT{F2: tier failure}
+  \ENDIF
+  \STATE $\phi \leftarrow \textsc{Faithful}(T, R)$ by Eq.~\ref{eq:faith}
+  \IF{$\neg \phi$ \AND $i < n$}
+    \STATE \textbf{continue} \hfill \COMMENT{F3: treated as tier failure}
+  \ENDIF
+  \STATE \textbf{return} $(T, i, \phi)$
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[t]
+\centering
+\input{figures/tikz_cascade}
+\caption{Summarization cascade. A tier that fails, times out, or returns output
+failing the faithfulness check is skipped. The deterministic tier has no
+external dependency and therefore always produces a summary, which is the
+property the availability claim rests on.}
+\label{fig:cascade}
+\end{figure}
+
+\subsection{What this does not do}
+
+The check is necessary, not sufficient, and we want to be explicit about the
+gap. It catches invented values and named conditions. It cannot detect a
+summary that is fluent, numerically correct, and clinically wrong---a correct
+recitation of the numbers paired with a misleading emphasis would pass. Nor is
+it a substitute for clinician review. Entailment-based approaches
+\cite{kryscinski2020} would extend the check beyond numerals, and we regard that
+as the natural next step rather than as a solved problem.
+
+%% ======================================================================
+\section{Implementation}
+\label{sec:impl}
+
+The triage service is Python with scikit-learn \cite{pedregosa2011}, serving one
+persisted pipeline that contains the imputer, the scaler and the estimator in a
+single artifact. Shipping these separately is a well-known route to silent
+train/serve skew \cite{sculley2015}; one artifact makes the skew impossible. A
+model card recording the artifact hash, the selection metric, the headline
+metrics and the intended use is stored alongside it.
+
+The backend is Java with Spring Boot. Persistence uses explicit SQL through
+\texttt{JdbcClient} with Flyway migrations rather than an object-relational
+mapper, because the headline claim concerns latency and hidden lazy-loading
+behaviour would undermine the measurements. The executor is configured with core
+4, maximum 8, queue 500, and a caller-runs rejection policy. Outbound calls to
+the triage service carry a 2\,s connect and 5\,s read timeout; without explicit
+timeouts a stalled dependency would hold an analysis thread indefinitely and
+eventually exhaust the pool.
+
+Both language model tiers are optional beans. With neither configured the
+application starts normally and the deterministic tier answers every request.
+This is not an incidental property: it is what allows the system to be deployed,
+tested and reproduced with no API keys and no local model weights.
+
+The dashboard is served by the backend as static assets with no build step. It
+surfaces the ward sorted by acuity, the per-parameter NEWS2 breakdown beside the
+model band, and---deliberately---which tier produced each summary and whether it
+passed verification.
+
+%% ======================================================================
+\section{Evaluation}
+\label{sec:eval}
+
+\subsection{Triage latency}
+
+Triage is the only model-dependent step in the synchronous-facing path, so its
+cost bounds how much of the ingestion budget analysis can consume.
+Table~\ref{tab:latency} reports the in-process model call over 1000
+single-observation predictions. The distribution is tight and the tail is short,
+which is what permits analysis to be scheduled per reading rather than batched.
+
+\input{tables/table_latency}
+
+\subsection{R1: decoupling under a stalled dependency}
+
+With the triage service artificially stalled for 3\,s, ingestion returns in
+under 1\,s. A synchronous implementation cannot pass this test, which is why it
+is the load-bearing test of the architectural claim.
+
+This test also taught us something about measurement. The first version failed,
+and the tempting conclusion was that the asynchronous dispatch was broken. It
+was not. The test was performing an authentication round-trip inside the timed
+region, and on first call also paying Spring Security filter initialisation and
+JIT warm-up. Hoisting both out of the measurement and tightening the bound from
+1500\,ms to 1000\,ms produced a test that passes comfortably and measures what it
+claims. Changing working architecture to satisfy a broken measurement would have
+been the worse outcome by some distance.
+
+\subsection{R2: throughput and saturation}
+
+Offered load was generated open-loop. This matters: a closed-loop generator that
+waits for each reply before sending the next silently throttles itself to
+whatever the server can manage, and therefore cannot detect saturation at all.
+With a fixed schedule, a server that falls behind manifests as rising latency.
+
+At 10, 50 and 100 requests per second the system tracks the offered rate with
+p95 ingestion latency between 27 and 31\,ms. At an offered 250 it saturates,
+achieving approximately 159 requests per second with p95 latency rising by two
+orders of magnitude. The asynchronous analysis backlog drained completely at
+every rate, which is the behaviour requirement R2 describes: the system slows
+rather than failing or accumulating unbounded work.
+Fig.~\ref{fig:throughput} shows both panels; achieved rate and latency are
+plotted separately rather than on twin axes, since they share no scale.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_throughput.pdf}
+\caption{Ingestion under open-loop offered load. Achieved rate tracks offered
+load to 100 requests per second and then departs from it; p95 latency rises by
+two orders of magnitude at the saturation point. Latency uses a logarithmic
+axis.}
+\label{fig:throughput}
+\end{figure}
+
+\subsection{R3, R4, R6: resilience}
+
+Three conditions were exercised by stopping and restarting containers rather
+than by mocking. With all services running, every reading produced an
+assessment. With the triage service stopped, ingestion and summarization both
+remained at 100\%, assessments were recorded with the model marked unavailable
+and the band reported as unavailable rather than guessed, and summaries were
+produced by the deterministic tier. On restart the system resumed using the
+model without a backend restart.
+
+The recovery condition initially reported a false failure, which is worth
+recording. The readiness check polled the triage container's own health endpoint
+from the host, which answers the question ``is the process listening'' rather
+than the question that matters, ``can the backend obtain a prediction''.
+Replacing it with an end-to-end probe---submit a reading, wait for an assessment
+with the model flag set---produced the correct result. Readiness is properly
+defined from the consumer's point of view.
+
+\subsection{R5: faithfulness enforcement}
+
+Under test, a candidate summary inventing a lactate value is rejected and the
+cascade falls through; the deterministic tier is verified to pass the same check
+on normal, severely deranged, bradycardic and hypertensive inputs. In live
+operation every summary recorded so far has been produced by the deterministic
+tier and has passed, because no language model has been enabled. This is a real
+limitation and is discussed in Section~\ref{sec:limits}.
+
+\subsection{Notification event counts}
+
+\input{tables/table_events}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_events.pdf}
+\caption{Notification volume under three policies over the same simulated
+stream, on a logarithmic scale. These are event counts only.}
+\label{fig:events}
+\end{figure}
+
+We stress that this is arithmetic over a simulated stream. It is not a
+measurement of alert fatigue, clinician workload, or patient benefit, and it
+must not be read as one. A policy emitting fewer notifications is not thereby
+safer; fewer notifications can mean missed deterioration. Establishing clinical
+benefit would require the kind of prospective study reported in
+\cite{escobar2020}, which is well beyond anything demonstrated here.
+
+\subsection{Test suite}
+
+The implementation carries 151 automated tests: 104 in Python covering NEWS2
+boundary conditions at every threshold, the zero-noise generator identity,
+patient-level split integrity, the inference API contract, and the clinical and
+calibration metrics; and 47 in Java covering token handling, every combination
+of cascade tier failure, the faithfulness guard, and end-to-end integration
+against a real PostgreSQL instance under Testcontainers.
+
+%% ======================================================================
+\section{Live Language Model Evaluation}
+\label{sec:llm}
+
+%% ----------------------------------------------------------------------
+%% RESERVED SECTION -- intentionally unpopulated.
+%% To fill: enable a tier in .env, run bench/llm_evaluation.py, then
+%% python paper/make_tables.py, then uncomment the \input below.
+%% ----------------------------------------------------------------------
+
+This section is reserved for evaluation of the live summarization tiers and is
+deliberately unpopulated in the present version. The cascade, its failure paths
+and the faithfulness guard are implemented and tested, but no language model has
+been executed: every summary reported in this paper was produced by the
+deterministic tier. The faithfulness guard has therefore been shown to reject
+fabricated output only under test, and its behaviour against real model output
+is unmeasured.
+
+We regard reporting this as an unmeasured gap as preferable to omitting the
+section. The availability argument of Section~\ref{sec:arch} rests on tiers
+whose generative behaviour has not yet been characterized, and that limit should
+be visible where a reader looks for those results.
+
+% \input{tables/table_llm}
+
+%% ======================================================================
+\section{Discussion}
+
+\subsection{On auditing before modeling}
+
+The Track A finding was not subtle and required no sophisticated tooling. A
+depth-3 tree exposes it in seconds. It survives in the literature because the
+standard workflow never asks the question. Given that leakage has been
+documented across hundreds of papers in seventeen disciplines \cite{kapoor2023},
+we suggest that a label-provenance check should be as routine as a train/test
+split, and that it is cheap enough that there is no good reason to skip it.
+
+\subsection{On negative controls}
+
+The $\sigma = 0$ result, where the learned model is significantly worse than the
+rule, is the most informative number in Table~\ref{tab:noise}. A design in which
+the model wins everywhere would be indistinguishable from a design that leaks.
+This connects to the generalizability critique \cite{futoma2020}: a result that
+cannot fail under any condition is not evidence about the conditions it claims
+to describe.
+
+\subsection{On aggregate metrics in clinical triage}
+
+Macro-F1 selected the worse model twice in this work, under different
+circumstances: once between estimator families, once between input
+configurations. In both cases the cost-relevant difference was invisible in the
+aggregate score. Where error costs are asymmetric---and in triage they always
+are---directional error rates belong alongside aggregate metrics, not in an
+appendix. The cost-sensitive framing is old \cite{elkan2001}; the observation
+here is that it is still routinely omitted from reported results.
+
+\subsection{On architecture as a safety property}
+
+It is tempting to treat the decoupling as an engineering convenience. It is not.
+Under F1 a coupled system has two options, both bad: block ingestion, or
+fabricate a band. The architecture removes the dilemma by making the degraded
+state representable and durable. Much of what this paper calls resilience is
+really just refusing to let an unavailable component be silently replaced by a
+guess.
+
+%% ======================================================================
+\section{Limitations}
+\label{sec:limits}
+
+\begin{enumerate}
+  \item The Track B cohort is simulated. Results are software evaluation, not
+        clinical validation, and the corruption model is a stated assumption
+        rather than a measured device characterisation.
+  \item No language model has been run live. Section~\ref{sec:llm} is
+        unpopulated and the faithfulness guard is unvalidated against real
+        generative output.
+  \item Faithfulness checking cannot detect fluent, numerically correct,
+        clinically incorrect interpretation.
+  \item The asymmetric cost weights encode intuition, not outcome data.
+  \item NEWS2 is validated for acutely ill adults in hospital
+        \cite{smith2013, rcp2017}; applying it to simulated continuous wearable
+        telemetry is outside its validation scope, and the methodological
+        critique of early warning scores \cite{gerry2020} applies.
+  \item A sensor-only deployment loses two of seven NEWS2 parameters, with the
+        measured consequences in Table~\ref{tab:wearable}.
+  \item Security is prototype grade: a single demo credential, no refresh or
+        revocation, no external identity provider, no TLS in the bundled stack.
+  \item Throughput figures characterize one workstation and are not service
+        level objectives.
+  \item The evaluation uses a single simulated cohort generator. Dataset shift
+        between a generator and reality is exactly the hazard described in
+        \cite{finlayson2021}, and nothing here measures it.
+\end{enumerate}
+
+%% ======================================================================
+\section{Ethics and Safety}
+
+The system is a research prototype and not a medical device. It produces
+software triage categories, not diagnoses, and every API response and every
+screen carries that statement. No real patient data was used at any stage; all
+cohorts are simulated and the audited public dataset contains no identifiable
+information.
+
+Enabling the cloud summarization tier transmits telemetry to a third party,
+which is acceptable for synthetic data and would require a data processing
+agreement otherwise. Deployment on real data would require the hardening
+enumerated under Limitations, and a determination of regulatory status under
+applicable Clinical Decision Support guidance \cite{fda2026}. Risk management
+for the generative component would follow the NIST generative AI profile
+\cite{nist2024}.
+
+%% ======================================================================
+\section{Reproducibility}
+
+All results are regenerated from a clean checkout by a single script. Each
+experiment writes a JSON artifact recording its seeds, configuration and
+environment; every table and figure in this paper is generated from those
+artifacts, and no number is entered by hand. The audited dataset is not
+redistributed; a resolver script locates it and records its SHA-256 so a result
+can be tied to a specific file. Track B requires no external data.
+
+%% ======================================================================
+\section{Conclusion}
+
+VitalSync demonstrates that continuous telemetry ingestion and low-latency risk
+triage can be isolated from generative summarization, remaining fully available
+when every language model tier is unreachable, and that generated clinical text
+can be held to a mechanical grounding check that governs fallback rather than
+merely annotating output.
+
+Along the way we found that the public dataset the work was premised on carries
+a label that is a deterministic rule over two variables, and we report that as a
+caution about label provenance. Separating latent physiology from sensor
+observation gives a falsifiable comparison in which a learned model outperforms
+a threshold rule only under observation noise, and demonstrably fails to when
+there is none. Finally, we show that aggregate classification metrics can select
+triage models that are materially worse under asymmetric clinical cost.
+
+Evaluating the generative tiers themselves remains open, and is marked as such.
+So is the obvious next step for the verification gate: extending it from numeric
+entailment to textual entailment, so that it catches claims the current check
+cannot see.
+
+\appendices
+
+\section{NEWS2 Parameter Scoring}
+\label{app:news2}
+
+Table~\ref{tab:news2} reproduces the per-parameter scoring used as the labelling
+function, following the Royal College of Physicians specification
+\cite{rcp2017}. The aggregate is the sum of the seven parameter scores. The
+escalation band is \textsc{high} when the aggregate is at least 7,
+\textsc{medium} when the aggregate is 5 or 6 \emph{or} any single parameter
+scores 3, and \textsc{low} otherwise. The single-parameter clause is the part
+most often omitted in reimplementations, and it is the reason the band is not a
+monotone function of the aggregate alone.
+
+\begin{table}[h]
+\caption{NEWS2 per-parameter scoring (Scale 1).}
+\label{tab:news2}
+\centering
+\footnotesize
+\begin{tabular}{lll}
+\toprule
+Parameter & Range & Score \\
+\midrule
+\multirow{5}{*}{Respiration rate (min$^{-1}$)}
+  & $\le 8$        & 3 \\
+  & 9--11          & 1 \\
+  & 12--20         & 0 \\
+  & 21--24         & 2 \\
+  & $\ge 25$       & 3 \\
+\midrule
+\multirow{4}{*}{SpO$_2$ (\%)}
+  & $\le 91$       & 3 \\
+  & 92--93         & 2 \\
+  & 94--95         & 1 \\
+  & $\ge 96$       & 0 \\
+\midrule
+Supplemental oxygen & yes / air & 2 / 0 \\
+\midrule
+\multirow{5}{*}{Systolic BP (mmHg)}
+  & $\le 90$       & 3 \\
+  & 91--100        & 2 \\
+  & 101--110       & 1 \\
+  & 111--219       & 0 \\
+  & $\ge 220$      & 3 \\
+\midrule
+\multirow{6}{*}{Pulse (min$^{-1}$)}
+  & $\le 40$       & 3 \\
+  & 41--50         & 1 \\
+  & 51--90         & 0 \\
+  & 91--110        & 1 \\
+  & 111--130       & 2 \\
+  & $\ge 131$      & 3 \\
+\midrule
+Consciousness & alert / CVPU & 0 / 3 \\
+\midrule
+\multirow{5}{*}{Temperature ($^{\circ}$C)}
+  & $\le 35.0$     & 3 \\
+  & 35.1--36.0     & 1 \\
+  & 36.1--38.0     & 0 \\
+  & 38.1--39.0     & 1 \\
+  & $\ge 39.1$     & 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Sensor Corruption Parameters}
+\label{app:noise}
+
+Per-channel corruption at noise scale $\sigma = 1$: Gaussian standard deviations
+of 2.5\,bpm (heart rate), 1.5\% (oxygen saturation), 1.5\,min$^{-1}$
+(respiratory rate), 0.15\,$^{\circ}$C (temperature), 5\,mmHg (systolic) and
+4\,mmHg (diastolic). Motion artifact is applied to 1.5\% of heart-rate readings,
+adding 15--40\,bpm. Perfusion dropout is applied to 2\% of oxygen-saturation
+readings, subtracting 3--8 percentage points. Whole-channel dropout occurs at
+3\% per channel and is median-imputed at inference. Display quantization is
+applied to integers for heart rate, respiratory rate and both pressures, and to
+one decimal for oxygen saturation and temperature.
+
+Quantization is part of the corruption model and is disabled at $\sigma = 0$.
+Without that, rounding alone pushes values across NEWS2 thresholds and the
+zero-noise identity fails at approximately 0.984 rather than exactly 1, which is
+how the issue was originally found.
+
+\section{Cost Matrix}
+\label{app:cost}
+
+The asymmetric cost matrix $C$, indexed $C[\text{true}][\text{predicted}]$ over
+$(\textsc{low}, \textsc{medium}, \textsc{high})$:
+\begin{equation}
+C =
+\begin{bmatrix}
+0 & 1 & 2 \\
+5 & 0 & 1 \\
+25 & 5 & 0
+\end{bmatrix}
+\end{equation}
+
+Under-triage is penalised more heavily than over-triage, and missing a
+high-risk observation entirely is penalised an order of magnitude beyond a
+one-band slip. These weights are an assumption. They encode the view that
+escalating unnecessarily costs a review while failing to escalate can cost a
+patient, but they are not derived from outcome data and a reader who disagrees
+should substitute their own and rerun.
+
+
+
+\begin{thebibliography}{00}
+
+\bibitem{rcp2017}
+Royal College of Physicians, \emph{National Early Warning Score (NEWS) 2:
+Standardising the Assessment of Acute-Illness Severity in the NHS}. London,
+U.K.: RCP, 2017.
+
+\bibitem{smith2013}
+G.~B. Smith, D.~R. Prytherch, P.~Meredith, P.~E. Schmidt, and P.~I.
+Featherstone, ``The ability of the National Early Warning Score (NEWS) to
+discriminate patients at risk of early cardiac arrest, unanticipated intensive
+care unit admission, and death,'' \emph{Resuscitation}, vol.~84, no.~4,
+pp.~465--470, 2013, doi: 10.1016/j.resuscitation.2012.12.016.
+
+\bibitem{subbe2001}
+C.~P. Subbe, M.~Kruger, P.~Rutherford, and L.~Gemmel, ``Validation of a modified
+Early Warning Score in medical admissions,'' \emph{QJM}, vol.~94, no.~10,
+pp.~521--526, 2001.
+
+\bibitem{gerry2020}
+S.~Gerry, T.~Bonnici, J.~Birks, S.~Kirtley, P.~S. Virdee, P.~J. Watkinson, and
+G.~S. Collins, ``Early warning scores for detecting deterioration in adult
+hospital patients: systematic review and critical appraisal of methodology,''
+\emph{BMJ}, vol.~369, 2020.
+
+\bibitem{sendelbach2013}
+S.~Sendelbach and M.~Funk, ``Alarm fatigue: A patient safety concern,''
+\emph{AACN Advanced Critical Care}, vol.~24, no.~4, pp.~378--386, 2013, doi:
+10.1097/NCI.0b013e3182a903f9.
+
+\bibitem{drew2014}
+B.~J. Drew, P.~Harris, J.~K. Z\`{e}gre-Hemsey, T.~Mammone, D.~Schindler,
+R.~Salas-Boni, Y.~Bai, A.~Tinoco, Q.~Ding, and X.~Hu, ``Insights into the
+problem of alarm fatigue with physiologic monitor devices: A comprehensive
+observational study of consecutive intensive care unit patients,''
+\emph{PLoS ONE}, vol.~9, no.~10, art.~e110274, 2014.
+
+\bibitem{wong2021}
+A.~Wong, E.~Otles, J.~P. Donnelly, \emph{et al.}, ``External validation of a
+widely implemented proprietary sepsis prediction model in hospitalized
+patients,'' \emph{JAMA Internal Medicine}, vol.~181, no.~8, pp.~1065--1070,
+2021, doi: 10.1001/jamainternmed.2021.2626.
+
+\bibitem{churpek2016}
+M.~M. Churpek, T.~C. Yuen, C.~Winslow, D.~O. Meltzer, M.~W. Kattan, and D.~P.
+Edelson, ``Multicenter comparison of machine learning methods and conventional
+regression for predicting clinical deterioration on the wards,'' \emph{Critical
+Care Medicine}, vol.~44, no.~2, pp.~368--374, 2016.
+
+\bibitem{escobar2020}
+G.~J. Escobar, V.~X. Liu, A.~Schuler, B.~Lawson, J.~D. Greene, and P.~Kipnis,
+``Automated identification of adults at risk for in-hospital clinical
+deterioration,'' \emph{New England Journal of Medicine}, vol.~383, 2020, doi:
+10.1056/NEJMsa2001090.
+
+\bibitem{tomasev2019}
+N.~Toma\v{s}ev, X.~Glorot, J.~W. Chen, \emph{et al.}, ``A clinically applicable
+approach to continuous prediction of future acute kidney injury,''
+\emph{Nature}, vol.~572, no.~7767, pp.~116--119, 2019.
+
+\bibitem{hyland2020}
+S.~L. Hyland, M.~Faltys, M.~H\"{u}ser, \emph{et al.}, ``Early prediction of
+circulatory failure in the intensive care unit using machine learning,''
+\emph{Nature Medicine}, vol.~26, 2020, doi: 10.1038/s41591-020-0789-4.
+
+\bibitem{moor2021}
+M.~Moor, B.~Rieck, M.~Horn, C.~R. Jutzeler, and K.~Borgwardt, ``Early prediction
+of sepsis in the ICU using machine learning: A systematic review,''
+\emph{Frontiers in Medicine}, vol.~8, art.~607952, 2021.
+
+\bibitem{topol2019}
+E.~J. Topol, ``High-performance medicine: The convergence of human and
+artificial intelligence,'' \emph{Nature Medicine}, vol.~25, pp.~44--56, 2019,
+doi: 10.1038/s41591-018-0300-7.
+
+\bibitem{finlayson2021}
+S.~G. Finlayson, A.~Subbaswamy, K.~Singh, \emph{et al.}, ``The clinician and
+dataset shift in artificial intelligence,'' \emph{New England Journal of
+Medicine}, vol.~385, no.~3, pp.~283--286, 2021, doi: 10.1056/NEJMc2104626.
+
+\bibitem{futoma2020}
+J.~Futoma, M.~Simons, T.~Panch, F.~Doshi-Velez, and L.~A. Celi, ``The myth of
+generalisability in clinical research and machine learning in health care,''
+\emph{The Lancet Digital Health}, vol.~2, no.~9, 2020.
+
+\bibitem{roberts2021}
+M.~Roberts, D.~Driggs, M.~Thorpe, \emph{et al.}, ``Common pitfalls and
+recommendations for using machine learning to detect and prognosticate for
+COVID-19 using chest radiographs and CT scans,'' \emph{Nature Machine
+Intelligence}, vol.~3, pp.~199--217, 2021, doi: 10.1038/s42256-021-00307-0.
+
+\bibitem{kapoor2023}
+S.~Kapoor and A.~Narayanan, ``Leakage and the reproducibility crisis in
+machine-learning-based science,'' \emph{Patterns}, vol.~4, no.~9, 2023.
+
+\bibitem{johnson2016}
+A.~E.~W. Johnson, T.~J. Pollard, L.~Shen, \emph{et al.}, ``MIMIC-III, a freely
+accessible critical care database,'' \emph{Scientific Data}, vol.~3,
+art.~160035, 2016, doi: 10.1038/sdata.2016.35.
+
+\bibitem{breiman2001}
+L.~Breiman, ``Random forests,'' \emph{Machine Learning}, vol.~45, pp.~5--32,
+2001, doi: 10.1023/A:1010933404324.
+
+\bibitem{friedman2001}
+J.~H. Friedman, ``Greedy function approximation: A gradient boosting machine,''
+\emph{The Annals of Statistics}, vol.~29, no.~5, pp.~1189--1232, 2001, doi:
+10.1214/aos/1013203451.
+
+\bibitem{chen2016}
+T.~Chen and C.~Guestrin, ``XGBoost: A scalable tree boosting system,'' in
+\emph{Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining},
+2016, pp.~785--794.
+
+\bibitem{pedregosa2011}
+F.~Pedregosa, G.~Varoquaux, A.~Gramfort, \emph{et al.}, ``Scikit-learn: Machine
+learning in Python,'' \emph{Journal of Machine Learning Research}, vol.~12,
+pp.~2825--2830, 2011.
+
+\bibitem{guo2017}
+C.~Guo, G.~Pleiss, Y.~Sun, and K.~Q. Weinberger, ``On calibration of modern
+neural networks,'' in \emph{Proc. 34th Int. Conf. Machine Learning (ICML)},
+2017, pp.~1321--1330.
+
+\bibitem{niculescu2005}
+A.~Niculescu-Mizil and R.~Caruana, ``Predicting good probabilities with
+supervised learning,'' in \emph{Proc. 22nd Int. Conf. Machine Learning (ICML)},
+2005, pp.~625--632.
+
+\bibitem{elkan2001}
+C.~Elkan, ``The foundations of cost-sensitive learning,'' in \emph{Proc. 17th
+Int. Joint Conf. Artificial Intelligence (IJCAI)}, 2001, pp.~973--978.
+
+\bibitem{ji2023}
+Z.~Ji, N.~Lee, R.~Frieske, \emph{et al.}, ``Survey of hallucination in natural
+language generation,'' \emph{ACM Computing Surveys}, vol.~55, no.~12, art.~248,
+2023, doi: 10.1145/3571730.
+
+\bibitem{maynez2020}
+J.~Maynez, S.~Narayan, B.~Bohnet, and R.~McDonald, ``On faithfulness and
+factuality in abstractive summarization,'' in \emph{Proc. 58th Annu. Meeting
+Assoc. Computational Linguistics (ACL)}, 2020, pp.~1906--1919.
+
+\bibitem{kryscinski2020}
+W.~Kryscinski, B.~McCann, C.~Xiong, and R.~Socher, ``Evaluating the factual
+consistency of abstractive text summarization,'' in \emph{Proc. Conf. Empirical
+Methods in Natural Language Processing (EMNLP)}, 2020, pp.~9332--9346, doi:
+10.18653/v1/2020.emnlp-main.750.
+
+\bibitem{vanveen2024}
+D.~Van~Veen, C.~Van~Uden, L.~Blankemeier, \emph{et al.}, ``Adapted large
+language models can outperform medical experts in clinical text
+summarization,'' \emph{Nature Medicine}, vol.~30, pp.~1134--1142, 2024, doi:
+10.1038/s41591-024-02855-5.
+
+\bibitem{lewis2020}
+P.~Lewis, E.~Perez, A.~Piktus, \emph{et al.}, ``Retrieval-augmented generation
+for knowledge-intensive NLP tasks,'' in \emph{Advances in Neural Information
+Processing Systems}, vol.~33, 2020, pp.~9459--9474.
+
+\bibitem{bender2013}
+D.~Bender and K.~Sartipi, ``HL7 FHIR: An agile and RESTful approach to
+healthcare information exchange,'' in \emph{Proc. 26th IEEE Int. Symp.
+Computer-Based Medical Systems (CBMS)}, 2013.
+
+\bibitem{dean2013}
+J.~Dean and L.~A. Barroso, ``The tail at scale,'' \emph{Communications of the
+ACM}, vol.~56, no.~2, pp.~74--80, 2013, doi: 10.1145/2408776.2408794.
+
+\bibitem{sculley2015}
+D.~Sculley, G.~Holt, D.~Golovin, \emph{et al.}, ``Hidden technical debt in
+machine learning systems,'' in \emph{Advances in Neural Information Processing
+Systems}, vol.~28, 2015.
+
+\bibitem{paleyes2022}
+A.~Paleyes, R.-G. Urma, and N.~D. Lawrence, ``Challenges in deploying machine
+learning: A survey of case studies,'' \emph{ACM Computing Surveys}, vol.~55,
+no.~6, art.~114, 2022, doi: 10.1145/3533378.
+
+\bibitem{nist2024}
+National Institute of Standards and Technology, \emph{Artificial Intelligence
+Risk Management Framework: Generative Artificial Intelligence Profile},
+NIST AI 600-1, 2024.
+
+\bibitem{fda2026}
+U.S. Food and Drug Administration, \emph{Clinical Decision Support Software:
+Guidance for Industry and Food and Drug Administration Staff}.
+
+\bibitem{dataset}
+N.~Ayub, ``Human Vital Sign Dataset,'' Kaggle, 2024. [Online]. Available:
+\url{https://www.kaggle.com/datasets/nasirayub2/human-vital-sign-dataset}.
+Audited in Section~\ref{sec:tracka}; its risk label is a deterministic rule.
+
+\end{thebibliography}
+
+
+\end{document}

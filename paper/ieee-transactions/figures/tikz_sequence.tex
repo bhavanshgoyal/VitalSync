@@ -1,0 +1,51 @@
+% Timing of one reading. The point is the gap between acknowledgement and
+% analysis: the client is released long before any model has been consulted.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    lifeline/.style = {draw=black!45, dashed, line width=0.5pt},
+    head/.style     = {draw, rounded corners=2pt, minimum height=5.5mm,
+                       minimum width=17mm, align=center, fill=black!4,
+                       line width=0.5pt, font=\scriptsize},
+    msg/.style      = {-{Latex[length=1.6mm,width=1.2mm]}, line width=0.6pt},
+    ret/.style      = {-{Latex[length=1.6mm,width=1.2mm]}, line width=0.6pt,
+                       dashed},
+    lbl/.style      = {font=\scriptsize, inner sep=1pt},
+    act/.style      = {draw, fill=blue!10, line width=0.4pt, minimum width=2mm},
+  ]
+
+  % Lifelines
+  \def\ya{0}      % client
+  \def\yb{-28}    % ingestion
+  \def\yc{-56}    % database
+  \def\yd{-84}    % executor
+  \def\ye{-112}   % triage
+  \def\yf{-140}   % cascade
+
+  \foreach \x/\name in {0/Client, 28/Ingestion, 56/Database, 84/Executor,
+                        112/Triage, 140/Cascade} {
+    \node[head] at (\x mm, 0) {\name};
+    \draw[lifeline] (\x mm, -2.2mm) -- (\x mm, -52mm);
+  }
+
+  % Synchronous phase
+  \draw[msg] (0mm,-6mm) -- node[above, lbl] {reading} (28mm,-6mm);
+  \draw[msg] (28mm,-11mm) -- node[above, lbl] {write} (56mm,-11mm);
+  \draw[ret] (56mm,-15mm) -- node[above, lbl] {id} (28mm,-15mm);
+  \draw[ret] (28mm,-19mm) -- node[above, lbl] {\textbf{202 Accepted}} (0mm,-19mm);
+
+  % Boundary
+  \draw[draw=red!55!black, dashed, line width=0.6pt]
+        (-8mm,-21.5mm) -- (150mm,-21.5mm);
+  \node[lbl, text=red!55!black, anchor=west] at (-8mm,-24mm)
+       {client released here; no model has been called};
+
+  % Asynchronous phase
+  \draw[msg] (28mm,-28mm) -- node[above, lbl] {hand off} (84mm,-28mm);
+  \draw[msg] (84mm,-33mm) -- node[above, lbl] {predict} (112mm,-33mm);
+  \draw[ret] (112mm,-37mm) -- node[above, lbl] {band, NEWS2} (84mm,-37mm);
+  \draw[msg] (84mm,-41mm) -- node[above, lbl] {summarise} (140mm,-41mm);
+  \draw[ret] (140mm,-45mm) -- node[above, lbl] {3 bullets, tier} (84mm,-45mm);
+  \draw[msg] (84mm,-50mm) -| node[pos=0.25, above, lbl] {persist assessment}
+             (56mm,-50mm);
+
+\end{tikzpicture}

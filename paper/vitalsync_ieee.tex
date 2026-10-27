@@ -160,7 +160,7 @@ train-and-report workflow.
 \subsection{Remote monitoring and alarm burden}
 
 Reviews of continuous remote monitoring consistently identify data volume and
-notification burden as limiting factors rather than sensing accuracy. Systems
+notification burden as limiting factors rather than sensing accuracy~\cite{rpm}. Systems
 that emit one notification per threshold breach per parameter scale
 notifications with the product of patients, parameters and sampling rate.
 Alert fatigue in EHRs directly impacts clinician cognitive load and necessitates intelligent alert filtering and summarization systems \cite{alert_fatigue_2024}.
@@ -208,8 +208,8 @@ to fall through rather than being surfaced.
 
 \subsection{Motivation}
 
-The project was specified around a public Kaggle dataset of human vital signs
-(200{,}020 rows, 17 columns) with a \texttt{Risk Category} label, to be
+The project was specified around a public Kaggle dataset of human vital
+signs~\cite{dataset} (200{,}020 rows, 17 columns) with a \texttt{Risk Category} label, to be
 classified with random forest and gradient boosting. Before training we audited
 the label.
 
@@ -319,6 +319,7 @@ patient are correlated.
 
 \subsection{Metrics}
 
+All estimators are implemented with scikit-learn~\cite{sklearn}.
 Macro-F1 is the pre-registered selection criterion. It is insufficient alone: it
 scores a missed high-risk observation identically to a spurious one. We
 therefore also report high-risk recall, \emph{missed-HIGH} (the fraction of
@@ -531,40 +532,53 @@ fewer notifications can mean missed deterioration.
 \section{Live Language Model Evaluation}
 \label{sec:llm}
 
-%% ----------------------------------------------------------------------
-%% RESERVED SECTION -- intentionally empty.
-%%
-%% No live language model tier has been run. Both the local and cloud tiers
-%% are implemented and exercised against stubs, including every failure and
-%% fallback path, but no real model output has been generated or assessed.
-%% Every summary in every result reported above was produced by the
-%% deterministic tier.
-%%
-%% To populate this section:
-%%   1. enable a tier in .env:
-%%        VITALSYNC_OLLAMA_ENABLED=true   (ollama pull llama3.1:8b)
-%%        and/or
-%%        VITALSYNC_GEMINI_ENABLED=true   with GEMINI_API_KEY set
-%%   2. docker compose up -d --build
-%%   3. python bench/llm_evaluation.py     -> artifacts/llm_evaluation.json
-%%   4. python paper/make_tables.py        -> tables/table_llm.tex
-%%   5. uncomment the \input below and replace this placeholder prose
-%% ----------------------------------------------------------------------
+This section reports the behaviour of the live summarization tiers. Two
+generative tiers were enabled: a local tier, \texttt{llama3.1:8b} served by
+Ollama on the evaluation host, and a cloud tier, \texttt{gemini-3.1-flash-lite}.
+The deterministic tier was retained as the terminal fallback. Thirty synthetic
+assessments spanning the severity range were submitted through the ordinary
+assessment path, so each observation traversed the same cascade a caller would
+exercise. Table~\ref{tab:llm} reports the result.
 
-This section is reserved for evaluation of the live summarization tiers and is
-deliberately unpopulated in the present version. The cascade, its failure paths
-and the faithfulness guard are implemented and tested, but no language model has
-been executed: every summary reported in this paper was produced by the
-deterministic tier. Consequently the faithfulness guard has been shown to reject
-fabricated output only under test, and its behaviour against real model output
-is unmeasured.
+\input{tables/table_llm}
 
-We regard reporting this as an unmeasured gap as preferable to omitting the
-section. The availability argument of Section~\ref{sec:arch} rests on tiers
-whose generative behaviour has not yet been characterized, and that limit
-should be visible where a reader looks for those results.
+The local tier attempted all thirty assessments and answered twenty. The
+faithfulness guard rejected the remaining ten, every one of which fell through
+to the cloud tier, which answered all ten and was rejected on none. The
+deterministic tier was never reached. No tier timed out or returned an error
+during the run, so every fallthrough observed was a faithfulness rejection
+rather than an availability failure.
 
-% \input{tables/table_llm}
+The headline figure is that the local tier's output was rejected on one third
+of its attempts. The rejections were not malformed text: in each case the model
+produced a fluent summary that cited a numeric value absent from the
+observation it was given, including plausible vital signs such as a temperature
+of $37.5^{\circ}$C, a respiratory rate of 16 and an oxygen saturation of 95\%.
+These are the values a reader would be least likely to question. The guard
+rejects on provenance rather than plausibility, which is why it catches them.
+
+This measurement requires one methodological note. The rate reported here is
+computed over each tier's \emph{attempts}, recorded by instrumenting the
+cascade directly. A rate computed over returned summaries cannot fall below
+unity, because a summary that fails the guard is never returned; such a figure
+would be a restatement of the guard's definition rather than a measurement of
+model behaviour. The distinction matters: over this run the attempt-based rate
+for the local tier is $0.667$, while the returned-summary rate for the same
+tier is $1.000$.
+
+Three limits apply to these figures. They describe a single run of thirty
+synthetic cases on one host, and are not a stability estimate; a repeat run
+under the same configuration produced eight rejections rather than ten. The
+fallthrough rate is a property of this model pair at this prompt, and a
+different local model would move it. And as Section~\ref{sec:limits} records,
+the guard is a provenance check over numbers and condition names: it cannot
+detect a summary that is fluent, numerically correct and clinically wrong.
+
+What the run does establish is that the guard is load-bearing rather than
+decorative. On this model pair it fired on a third of local-tier attempts, and
+on every occasion the cascade recovered without returning fabricated content to
+the caller.
+
 
 %% ======================================================================
 \section{Discussion}
@@ -598,9 +612,11 @@ whenever error costs are asymmetric.
 \begin{enumerate}
   \item The Track B cohort is simulated. Results are software evaluation, not
         clinical validation, and the corruption model is a stated assumption.
-  \item No language model has been run live; Section~\ref{sec:llm} is
-        unpopulated, and the faithfulness guard is unvalidated against real
-        generative output.
+  \item The live model evaluation in Section~\ref{sec:llm} is a single run
+        of thirty synthetic cases against one model pair on one host. It
+        establishes that the faithfulness guard fires against real
+        generative output, but the rejection rate is not a stable estimate
+        and does not transfer to other models or prompts.
   \item Faithfulness checking cannot detect fluent, numerically correct,
         clinically incorrect interpretation.
   \item The asymmetric cost weights encode intuition, not outcome data.

@@ -7,6 +7,8 @@ import com.vitalsync.repo.PatientRepository;
 import com.vitalsync.repo.RiskAssessmentRepository;
 import com.vitalsync.repo.VitalReadingRepository;
 import com.vitalsync.service.summary.SummaryRequest;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,8 @@ import org.springframework.stereotype.Service;
 public class TelemetryService {
 
     private static final Logger log = LoggerFactory.getLogger(TelemetryService.class);
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final PatientRepository patients;
     private final VitalReadingRepository readings;
@@ -77,6 +81,24 @@ public class TelemetryService {
         return readings.findById(id);
     }
 
+    /**
+     * Serialises the per-parameter breakdown for storage.
+     *
+     * <p>A serialisation failure must not lose the assessment: the breakdown
+     * is explanatory detail, while the band and score are the result.
+     */
+    private static String toJson(java.util.Map<String, Integer> perParameter) {
+        if (perParameter == null || perParameter.isEmpty()) {
+            return null;
+        }
+        try {
+            return JSON.writeValueAsString(perParameter);
+        } catch (JsonProcessingException e) {
+            log.warn("Could not serialise NEWS2 breakdown: {}", e.getMessage());
+            return null;
+        }
+    }
+
     /** Asynchronous portion: triage, then summarize, then persist the assessment. */
     @Async("analysisExecutor")
     public void analyzeAsync(VitalReading reading) {
@@ -99,6 +121,7 @@ public class TelemetryService {
         Map<String, Double> probs;
         Integer news2Total = null;
         String news2Band = null;
+        String news2Breakdown = null;
         String modelVersion;
         boolean mlAvailable = prediction.isPresent();
 
@@ -110,6 +133,7 @@ public class TelemetryService {
             if (p.news2() != null) {
                 news2Total = p.news2().total();
                 news2Band = p.news2().band();
+                news2Breakdown = toJson(p.news2().per_parameter());
             }
             modelVersion = p.model_version();
         } else {
@@ -141,6 +165,7 @@ public class TelemetryService {
                 probs.get("HIGH"),
                 news2Total,
                 news2Band,
+                news2Breakdown,
                 modelVersion,
                 mlMs,
                 mlAvailable,

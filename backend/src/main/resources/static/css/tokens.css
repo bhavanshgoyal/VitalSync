@@ -1,0 +1,168 @@
+/* Design tokens.
+ *
+ * Colours come from the same validated palette used for the paper figures, so
+ * the screen and the print artefacts agree. Categorical slots are fixed in
+ * order and never cycled; the status palette is reserved for risk bands and is
+ * never reused for a data series.
+ *
+ * Dark mode is selected, not inverted: each dark step was chosen against the
+ * dark surface rather than computed from the light one.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* surfaces, light */
+  --surface-0: #f4f4f2;   /* page */
+  --surface-1: #fcfcfb;   /* card */
+  --surface-2: #efeeea;   /* inset */
+  --surface-3: #e4e3de;   /* hover */
+  --border:    #dcdbd5;
+  --border-strong: #c4c3bc;
+
+  /* ink */
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #75746e;
+
+  /* categorical series */
+  --series-1: #2a78d6;  /* blue   */
+  --series-2: #eb6834;  /* orange */
+  --series-3: #1baf7a;  /* aqua   */
+  --series-4: #eda100;  /* yellow */
+
+  /* reserved status palette - risk bands only */
+  --status-good:     #0ca30c;
+  --status-warning:  #fab219;
+  --status-critical: #d03b3b;
+  --status-unknown:  #75746e;
+
+  /* status tints, for badge grounds */
+  --tint-good:     #e8f6e8;
+  --tint-warning:  #fdf3dd;
+  --tint-critical: #faeaea;
+  --tint-unknown:  #eeedea;
+
+  /* per-parameter vital colours, constant across the app so a clinician can
+     learn them once (the convention bedside monitors rely on) */
+  --vital-hr:   #d03b3b;
+  --vital-spo2: #2a78d6;
+  --vital-bp:   #7b5ea7;
+  --vital-temp: #eb6834;
+  --vital-rr:   #1baf7a;
+  --vital-si:   #75746e;
+
+  --grid: #e6e5e0;
+
+  /* type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+               "Liberation Mono", monospace;
+
+  /* spacing scale */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+
+  --radius:    10px;
+  --radius-sm: 6px;
+  --radius-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(11, 11, 11, 0.05);
+  --shadow-2: 0 2px 8px rgba(11, 11, 11, 0.08);
+
+  --speed: 140ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --surface-3: #2d2d2b;
+    --border:    #383835;
+    --border-strong: #4a4a46;
+
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #94938a;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+
+    --tint-good:     #13260f;
+    --tint-warning:  #2b2208;
+    --tint-critical: #2d1313;
+    --tint-unknown:  #26262400;
+
+    --vital-hr:   #e66767;
+    --vital-spo2: #3987e5;
+    --vital-bp:   #9085e9;
+    --vital-temp: #d95926;
+    --vital-rr:   #199e70;
+    --vital-si:   #94938a;
+
+    --grid: #2e2e2c;
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Explicit choice wins over the OS setting, in both directions. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-0: #121211;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --surface-3: #2d2d2b;
+  --border:    #383835;
+  --border-strong: #4a4a46;
+
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #94938a;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+
+  --tint-good:     #13260f;
+  --tint-warning:  #2b2208;
+  --tint-critical: #2d1313;
+  --tint-unknown:  #262624;
+
+  --vital-hr:   #e66767;
+  --vital-spo2: #3987e5;
+  --vital-bp:   #9085e9;
+  --vital-temp: #d95926;
+  --vital-rr:   #199e70;
+  --vital-si:   #94938a;
+
+  --grid: #2e2e2c;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* A UI that animates while a patient is deteriorating is hostile. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --speed: 0ms; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

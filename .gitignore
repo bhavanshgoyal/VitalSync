@@ -33,3 +33,23 @@ paper/*.fdb_latexmk
 Thumbs.db
 .idea/
 .vscode/
+
+# Secrets: ignore every env file except the example
+.env.*
+!.env.example
+
+# Backups, Office lock files, local packages
+*.backup
+~$*
+deliverables/
+deliverables.zip
+
+# Duplicate submission bundles and LaTeX build output
+paper/submission/
+paper/ieee-transactions/*.aux
+paper/ieee-transactions/*.log
+paper/ieee-transactions/*.out
+paper/ieee-transactions/*.generated-*.tex
+
+# Only if you are NOT publishing the invention disclosure
+docs/ip/

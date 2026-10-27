@@ -1,0 +1,38 @@
+% The latent/observed separation that makes Track B falsifiable.
+%
+% Deliberately carries no explanatory note: the caption states the negative
+% control, and an in-diagram repetition collided with the method boxes.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    box/.style   = {draw, rounded corners=2pt, minimum height=8mm,
+                    minimum width=24mm, align=center, line width=0.5pt},
+    truth/.style = {box, fill=green!8,  draw=green!50!black},
+    obs/.style   = {box, fill=orange!8, draw=orange!65!black},
+    meth/.style  = {box, fill=blue!7,   draw=blue!55, minimum width=21mm},
+    arr/.style   = {-{Latex[length=1.8mm,width=1.4mm]}, line width=0.6pt},
+    note/.style  = {font=\scriptsize\itshape, text=black!55, align=center},
+  ]
+
+  % Top row: the truth path, which no method ever observes.
+  \node[truth] (latent) {latent physiology \\ $x^{*}$};
+  \node[truth, right=30mm of latent] (y) {ground truth \\ $y^{*}$};
+  \draw[arr] (latent) -- node[above, note] {NEWS2} (y);
+
+  % Bottom row: the observation path, which every method does observe.
+  \node[obs, below=14mm of latent] (obs) {observed telemetry \\ $\hat{x}$};
+  \draw[arr] (latent) -- node[left, note, xshift=-1mm, align=right]
+             {sensor noise, \\ quantisation, \\ dropout} (obs);
+
+  \node[meth, below=14mm of y] (rule)  {NEWS2 rule};
+  \node[meth, below=6mm of rule] (model) {learned model};
+
+  \draw[arr] (obs.east) -- ++(6mm,0) |- (rule.west);
+  \draw[arr] (obs.east) -- ++(6mm,0) |- (model.west);
+
+  % Both methods are scored against the latent-signal ground truth. The dashed
+  % edges carry this unlabelled: any text here overruns the column, and the
+  % caption states it.
+  \draw[arr, dashed, draw=black!45] (y.east) -- ++(5mm,0) |- (rule.east);
+  \draw[arr, dashed, draw=black!45] (y.east) -- ++(5mm,0) |- (model.east);
+
+\end{tikzpicture}

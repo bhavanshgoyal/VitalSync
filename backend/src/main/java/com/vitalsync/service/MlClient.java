@@ -31,7 +31,11 @@ public class MlClient {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record News2Block(int total, String band, Integer max_single) {}
+    public record News2Block(
+            int total,
+            String band,
+            Integer max_single,
+            Map<String, Integer> per_parameter) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record PredictResponse(

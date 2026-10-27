@@ -107,6 +107,7 @@ public final class Dtos {
             Map<String, Double> probabilities,
             Integer news2Total,
             String news2Band,
+            Map<String, Integer> news2PerParameter,
             String modelVersion,
             Double mlLatencyMs,
             boolean mlAvailable,

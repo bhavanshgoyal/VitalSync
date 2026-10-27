@@ -342,6 +342,51 @@ class TelemetryIntegrationTest {
     }
 
     @Test
+    void news2BreakdownSurvivesTheRoundTripToPostgres() throws Exception {
+        // The breakdown is what makes a score checkable by hand, so it has to
+        // arrive intact through JSONB rather than being silently dropped.
+        rest.postForEntity(url("/api/v1/telemetry"), authed(telemetry("P001", 104)),
+                String.class);
+
+        ResponseEntity<String> res = rest.exchange(
+                url("/api/v1/patients/P001/analyze"),
+                HttpMethod.POST, authed(null), String.class);
+
+        JsonNode body = MAPPER.readTree(res.getBody());
+        JsonNode breakdown = body.get("news2PerParameter");
+
+        assertThat(breakdown).isNotNull();
+        assertThat(breakdown.get("respiratory_rate").asInt()).isEqualTo(2);
+        assertThat(breakdown.get("pulse").asInt()).isEqualTo(2);
+        assertThat(breakdown.get("spo2").asInt()).isEqualTo(1);
+
+        // The parts must sum to the reported total, or the UI would show a
+        // breakdown that contradicts the headline number.
+        int sum = 0;
+        for (JsonNode v : breakdown) {
+            sum += v.asInt();
+        }
+        assertThat(sum).isEqualTo(body.get("news2Total").asInt());
+    }
+
+    @Test
+    void breakdownIsAbsentRatherThanInventedWhenTriageIsDown() {
+        ML.setStatus(500);
+
+        rest.postForEntity(url("/api/v1/telemetry"), authed(telemetry("P004", 88)),
+                String.class);
+
+        await().atMost(Duration.ofSeconds(15))
+                .pollInterval(Duration.ofMillis(200))
+                .untilAsserted(() -> assertThat(
+                        assessments.latestForPatient("P004")).isPresent());
+
+        var latest = assessments.latestForPatient("P004").orElseThrow();
+        assertThat(latest.mlAvailable()).isFalse();
+        assertThat(latest.news2PerParameterJson()).isNull();
+    }
+
+    @Test
     void patientListIncludesLatestRiskBand() throws Exception {
         ResponseEntity<String> res = rest.exchange(
                 url("/api/v1/patients"), HttpMethod.GET, authed(null), String.class);

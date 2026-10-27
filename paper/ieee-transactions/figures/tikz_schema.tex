@@ -1,0 +1,41 @@
+% Persistence schema. Provenance columns are highlighted: the tier that
+% answered, its latency, the verification result and the degraded flag are
+% stored per assessment, so resilience is measured from data rather than logs.
+\begin{tikzpicture}[
+    font=\footnotesize,
+    tbl/.style  = {draw, rounded corners=2pt, align=left, line width=0.6pt,
+                   inner sep=2mm, font=\scriptsize},
+    hdr/.style  = {font=\scriptsize\bfseries},
+    arr/.style  = {-{Latex[length=1.6mm,width=1.2mm]}, line width=0.6pt},
+    lbl/.style  = {font=\scriptsize\itshape, text=black!55},
+  ]
+
+  \node[tbl, fill=black!4] (pat)
+    {\textbf{patients}\\[1pt]
+     \underline{patient\_id}\\ display\_name\\ age, sex\\ created\_at};
+
+  \node[tbl, fill=blue!7, right=16mm of pat, anchor=west] (read)
+    {\textbf{vital\_readings}\\[1pt]
+     \underline{id}\\ patient\_id \textit{(fk)}\\ observed\_at, recorded\_at\\
+     heart\_rate, spo2\\ temperature\_c, respiratory\_rate\\
+     systolic\_bp, diastolic\_bp\\ glucose\_mgdl \textit{(null)}\\
+     on\_oxygen, alert\\ shock\_index, pulse\_pressure, map\_mmhg};
+
+  \node[tbl, fill=green!8, right=16mm of read, anchor=west] (ass)
+    {\textbf{risk\_assessments}\\[1pt]
+     \underline{id}\\ patient\_id \textit{(fk)}, reading\_id \textit{(fk)}\\
+     risk\_band, confidence\\ prob\_low, prob\_medium, prob\_high\\
+     news2\_total, news2\_band\\ news2\_per\_parameter \textit{(jsonb)}\\
+     model\_version, ml\_latency\_ms\\
+     \textbf{ml\_available}\\ summary\_text, \textbf{summary\_provider}\\
+     summary\_latency\_ms\\ \textbf{summary\_faithful}\\ created\_at};
+
+  \draw[arr] (pat.east) -- node[above, lbl] {1:N} (read.west);
+  \draw[arr] (read.east) -- node[above, lbl] {1:N} (ass.west);
+
+  \node[lbl, below=2mm of ass.south east, anchor=north east, text width=52mm,
+        align=right]
+       {Bold columns carry provenance: which tier answered, whether triage was
+        reachable, and whether the summary passed verification.};
+
+\end{tikzpicture}

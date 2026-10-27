@@ -1,5 +1,7 @@
 package com.vitalsync.api;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vitalsync.api.dto.Dtos;
 import com.vitalsync.domain.RiskAssessment;
 import com.vitalsync.domain.VitalReading;
@@ -31,6 +33,8 @@ public class PatientController {
             "Research prototype. Not a medical device. Not for clinical use.";
 
     private static final int MAX_LIMIT = 500;
+
+    private static final ObjectMapper BREAKDOWN_JSON = new ObjectMapper();
 
     private final PatientRepository patients;
     private final VitalReadingRepository readings;
@@ -119,6 +123,25 @@ public class PatientController {
                 "totalAssessments", assessments.count());
     }
 
+    /**
+     * Reads the stored breakdown back into a map.
+     *
+     * <p>Returns null rather than throwing on unreadable content: a row
+     * written before this column existed, or one recorded while triage was
+     * down, legitimately has no breakdown.
+     */
+    private static Map<String, Integer> parseBreakdown(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return BREAKDOWN_JSON.readValue(
+                    json, new TypeReference<Map<String, Integer>>() {});
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private void requirePatient(String patientId) {
         if (!patients.exists(patientId)) {
             throw new ResponseStatusException(
@@ -143,7 +166,8 @@ public class PatientController {
         return new Dtos.RiskView(
                 a.id(), a.patientId(), a.readingId(), a.riskBand(), a.confidence(),
                 probs.isEmpty() ? null : probs,
-                a.news2Total(), a.news2Band(), a.modelVersion(),
+                a.news2Total(), a.news2Band(), parseBreakdown(a.news2PerParameterJson()),
+                a.modelVersion(),
                 a.mlLatencyMs(), a.mlAvailable(),
                 a.summaryText(), a.summaryProvider(), a.summaryLatencyMs(),
                 a.summaryFaithful(),
